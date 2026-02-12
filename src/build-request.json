@@ -1,36 +1,72 @@
 {
   "kind": "build_request",
-  "title": "Configure mainnet ledger canister IDs for ckBTC, ckETH, and ckUSDC",
+  "title": "Add non-transfer token ledger diagnostics to confirm mainnet ledger IDs are wired correctly",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-5",
-      "text": "Populate the token configuration so ckBTC, ckETH, and ckUSDC have correct Internet Computer mainnet ledger canister IDs, enabling the Send UI for each token.",
+      "id": "REQ-1",
+      "text": "Confirm ckBTC, ckETH, and ckUSDC are configured with the correct Internet Computer mainnet ledger canister IDs by adding a token configuration self-check that compares the configured IDs in `frontend/src/config/tokens.ts` against the expected mainnet ledger IDs and reports any mismatch.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "recent-messages-5"
+          "msg-6"
         ],
         "quotes": [
-          "add correct mainnet ledger IDs for ck BTC ckETH ckUSDC"
+          "check and confirm whether the correct mainnet ledger IDs confirm everything is wired up properly without sending any real ckBTC, ckETH, or ckUSDC."
         ]
       },
       "acceptanceCriteria": [
-        "In frontend/src/config/tokens.ts, TOKENS.ckETH.ledgerCanisterId is set to the official mainnet ckETH ledger canister ID: ss2fx-dyaaa-aaaar-qacoq-cai.",
-        "In frontend/src/config/tokens.ts, TOKENS.ckBTC.ledgerCanisterId is set to the official mainnet ckBTC ledger canister ID (do not leave undefined).",
-        "In frontend/src/config/tokens.ts, TOKENS.ckUSDC.ledgerCanisterId is set to the official mainnet ckUSDC ledger canister ID (do not leave undefined).",
-        "On the Dashboard Tokens section, the “Not configured” warning no longer appears for ckBTC, ckETH, or ckUSDC send panels, and the send form renders for all three tokens."
+        "A single function (or equivalent) exists that returns, per token (ckBTC/ckETH/ckUSDC), the configured ledger canister ID, the expected mainnet ledger canister ID, and a boolean indicating whether they match exactly.",
+        "When a token is missing a ledger canister ID, the self-check reports it as not configured and does not throw.",
+        "The expected mainnet ledger canister IDs used for the comparison are: ckBTC = mxzaz-hqaaa-aaaar-qaada-cai; ckETH = ss2fx-dyaaa-aaaar-qacoq-cai; ckUSDC = xevnm-gaaaa-aaaar-qafnq-cai."
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Add a read-only “Token Ledger Diagnostics” UI on the Dashboard that lets the user verify wiring without any transfers by displaying (for each token) the configured ledger canister ID, whether it matches the expected mainnet ID, and a copy-to-clipboard JSON diagnostic report.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6"
+        ],
+        "quotes": [
+          "confirm everything is wired up properly without sending any real ckBTC, ckETH, or ckUSDC."
+        ]
+      },
+      "acceptanceCriteria": [
+        "The Dashboard page shows a new diagnostics card/panel dedicated to token ledger configuration (in addition to the existing Transport Key Diagnostics).",
+        "For each of ckBTC, ckETH, ckUSDC, the panel shows: token symbol, configured ledger canister ID (or a clear “Not configured” state), and a status indicator for “Matches expected mainnet ID” vs “Mismatch”.",
+        "The panel provides a “Copy JSON” action that copies a JSON blob including timestamp and per-token fields (symbol, configuredLedgerCanisterId, expectedLedgerCanisterId, matchesExpected).",
+        "All user-facing text in this panel is in English."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Add a non-transfer connectivity/metadata check per token ledger canister to further confirm wiring without sending funds by calling read-only ICRC methods (e.g., name/symbol/decimals and/or supported standards) and surfacing success/failure in the Token Ledger Diagnostics UI.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6"
+        ],
+        "quotes": [
+          "check and confirm whether the correct mainnet ledger IDs confirm everything is wired up properly without sending any real ckBTC, ckETH, or ckUSDC."
+        ]
+      },
+      "acceptanceCriteria": [
+        "The app performs only read-only calls for this verification (no transfer calls are made).",
+        "For each configured token, the diagnostics UI shows whether the metadata check succeeded and displays returned values (at minimum decimals) when available.",
+        "If a ledger call fails (e.g., due to network/agent/canister issues), the UI shows a non-crashing error state for that token and still allows copying diagnostics JSON including the error message/stringified failure."
       ]
     }
   ],
   "constraints": [
-    "Do not edit files under frontend/src/components/ui (read-only UI components).",
-    "Do not change authentication hooks in frontend/src/hooks/useInternetIdentity.ts(x) or actor wiring in frontend/src/hooks/useActor.ts."
+    "Do not perform any token transfers as part of verification; diagnostics must use read-only ledger calls only.",
+    "Do not edit files under `frontend/src/components/ui` or any other paths listed as immutable in SYSTEM_CONTEXT."
   ],
   "nonGoals": [
-    "Implementing real on-chain ICRC-1/ICRC-2 transfer calls.",
-    "Adding new backend canisters or external databases/services.",
-    "Adding a new UI flow for manually entering ledger IDs at runtime."
+    "Implementing real send/receive token transfer functionality.",
+    "Adding token balance fetching to the dashboard (unless explicitly requested later).",
+    "Changing backend Motoko logic or adding new backend actors/services."
   ],
   "imageRequirements": {
     "required": [],

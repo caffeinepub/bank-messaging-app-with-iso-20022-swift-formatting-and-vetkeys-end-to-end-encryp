@@ -1,22 +1,69 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Configure mainnet ledger canister IDs for ckBTC, ckETH, and ckUSDC",
+  "title": "Token ledger diagnostics (non-transfer) for ckBTC/ckETH/ckUSDC",
   "requirements": [
     {
-      "id": "REQ-5",
-      "summary": "Set official Internet Computer mainnet ledger canister IDs for ckBTC, ckETH, and ckUSDC so the Send UI is enabled for each token.",
+      "id": "REQ-1",
+      "summary": "Add a token configuration self-check comparing configured ledger canister IDs against expected mainnet IDs and reporting mismatches without throwing.",
       "acceptanceCriteria": [
-        "In frontend/src/config/tokens.ts, TOKENS.ckETH.ledgerCanisterId is set to the official mainnet ckETH ledger canister ID: ss2fx-dyaaa-aaaar-qacoq-cai.",
-        "In frontend/src/config/tokens.ts, TOKENS.ckBTC.ledgerCanisterId is set to the official mainnet ckBTC ledger canister ID (do not leave undefined).",
-        "In frontend/src/config/tokens.ts, TOKENS.ckUSDC.ledgerCanisterId is set to the official mainnet ckUSDC ledger canister ID (do not leave undefined).",
-        "On the Dashboard Tokens section, the “Not configured” warning no longer appears for ckBTC, ckETH, or ckUSDC send panels, and the send form renders for all three tokens."
+        "A single function (or equivalent) exists that returns, per token (ckBTC/ckETH/ckUSDC), the configured ledger canister ID, the expected mainnet ledger canister ID, and a boolean indicating whether they match exactly.",
+        "When a token is missing a ledger canister ID, the self-check reports it as not configured and does not throw.",
+        "The expected mainnet ledger canister IDs used for the comparison are: ckBTC = mxzaz-hqaaa-aaaar-qaada-cai; ckETH = ss2fx-dyaaa-aaaar-qacoq-cai; ckUSDC = xevnm-gaaaa-aaaar-qafnq-cai."
       ],
       "file_operations": [
         {
           "path": "frontend/src/config/tokens.ts",
           "operation": "modify",
-          "description": "Populate TOKENS.ckBTC.ledgerCanisterId, TOKENS.ckETH.ledgerCanisterId (ss2fx-dyaaa-aaaar-qacoq-cai), and TOKENS.ckUSDC.ledgerCanisterId with their official Internet Computer mainnet ledger canister IDs so isTokenConfigured() returns true and the Send panels render instead of the “Not configured” warning."
+          "description": "Add an expected-mainnet ledger canister ID mapping for ckBTC/ckETH/ckUSDC and implement a single self-check function that returns (per token) symbol, configuredLedgerCanisterId (or undefined), expectedLedgerCanisterId, and matchesExpected (false when missing/mismatched) without throwing when not configured."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Add a read-only Token Ledger Diagnostics panel on the Dashboard that displays per-token configured vs expected ledger IDs and supports copy-to-clipboard JSON reporting.",
+      "acceptanceCriteria": [
+        "The Dashboard page shows a new diagnostics card/panel dedicated to token ledger configuration (in addition to the existing Transport Key Diagnostics).",
+        "For each of ckBTC, ckETH, ckUSDC, the panel shows: token symbol, configured ledger canister ID (or a clear “Not configured” state), and a status indicator for “Matches expected mainnet ID” vs “Mismatch”.",
+        "The panel provides a “Copy JSON” action that copies a JSON blob including timestamp and per-token fields (symbol, configuredLedgerCanisterId, expectedLedgerCanisterId, matchesExpected).",
+        "All user-facing text in this panel is in English."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/dashboard/TokenLedgerDiagnosticsPanel.tsx",
+          "operation": "create",
+          "description": "Create a new Dashboard diagnostics card that renders the token self-check results (ckBTC/ckETH/ckUSDC) and provides a “Copy JSON” action that copies a timestamped JSON diagnostic blob. Use existing shadcn-ui components (e.g., Card, Badge, Button, Separator) for consistent UI. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/DashboardPage.tsx",
+          "operation": "modify",
+          "description": "Wire the new TokenLedgerDiagnosticsPanel into the Dashboard page so it appears as a dedicated diagnostics card/panel in addition to the existing TransportKeyDiagnosticsPanel, and ensure all displayed text is English. Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Add a non-transfer ledger connectivity/metadata verification per configured token using read-only ICRC calls and surface success/failure and returned metadata in the diagnostics UI and JSON copy report.",
+      "acceptanceCriteria": [
+        "The app performs only read-only calls for this verification (no transfer calls are made).",
+        "For each configured token, the diagnostics UI shows whether the metadata check succeeded and displays returned values (at minimum decimals) when available.",
+        "If a ledger call fails (e.g., due to network/agent/canister issues), the UI shows a non-crashing error state for that token and still allows copying diagnostics JSON including the error message/stringified failure."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/lib/icrc/icrcLedgerClient.ts",
+          "operation": "create",
+          "description": "Add a small client helper that can perform read-only ICRC ledger metadata calls (e.g., name/symbol/decimals and/or supported standards) against a provided ledger canister ID, using the app’s existing agent/identity context where appropriate, and ensuring no transfer/write methods are invoked. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/hooks/useTokenLedgerDiagnostics.ts",
+          "operation": "create",
+          "description": "Create a React Query-based hook that (a) computes configured-vs-expected self-check results and (b) for each configured token performs read-only metadata calls via the ICRC client, returning per-token success, metadata (at minimum decimals when available), and a safe error string on failure (no crashes). Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/dashboard/TokenLedgerDiagnosticsPanel.tsx",
+          "operation": "modify",
+          "description": "Extend the panel to call useTokenLedgerDiagnostics and display per-token metadata check status, show returned values (at minimum decimals) when available, and render a non-crashing error state when calls fail; ensure the “Copy JSON” report includes per-token error text (when any) alongside symbol/configured/expected/matchesExpected and metadata fields. Verify the component's usage instructions before implementing."
         }
       ]
     }

@@ -1,38 +1,29 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-12T22:49:52.847Z",
-  "summary": "REQ-5 is largely implemented by setting ledgerCanisterId values for ckBTC, ckETH, and ckUSDC in frontend/src/config/tokens.ts (ckETH matches the specified ID). However, the diff summary provides no direct evidence of the Dashboard UI warning/message behavior change. Two additional files (frontend-file-summaries.txt and project_state.json) were modified without being requested.",
+  "generatedAt": "2026-02-12T23:04:29.076Z",
+  "summary": "REQ-1 is implemented via a new token self-check function in `frontend/src/config/tokens.ts` comparing configured vs expected mainnet ledger IDs. REQ-2 and REQ-3 appear largely implemented via a new Dashboard diagnostics panel, a React Query hook, and a read-only ICRC metadata client; however, due to truncation of the diagnostics panel file, some UI acceptance criteria (displaying returned metadata values like decimals and per-token error states) cannot be fully verified from the provided diff summary.",
   "missing_requirements": [
     {
-      "id": "REQ-5",
-      "requirement": "On the Dashboard Tokens section, the “Not configured” warning no longer appears for ckBTC, ckETH, or ckUSDC send panels, and the send form renders for all three tokens.",
-      "reason": "Only token configuration changes are shown. No dashboard/UI component changes are included in the diff summary to demonstrate removal of the warning or ensuring the send form renders.",
+      "id": "REQ-3",
+      "requirement": "For each configured token, the diagnostics UI shows whether the metadata check succeeded and displays returned values (at minimum decimals) when available; and shows a non-crashing per-token error state while still allowing copying diagnostics JSON including the error.",
+      "reason": "Backend/read-only metadata fetching and JSON copy structure are implemented, but the UI rendering of per-token metadata success/failure, returned values (e.g., decimals), and per-token error state is not visible in the truncated `TokenLedgerDiagnosticsPanel.tsx` snippet, so this cannot be confirmed as implemented.",
       "evidence": [
-        "frontend/src/config/tokens.ts"
+        "frontend/src/components/dashboard/TokenLedgerDiagnosticsPanel.tsx (truncated)",
+        "frontend/src/hooks/useTokenLedgerDiagnostics.ts",
+        "frontend/src/lib/icrc/icrcLedgerClient.ts"
       ]
     }
   ],
-  "hallucinated_features": [
-    {
-      "description": "Updated generated/metadata summary file frontend-file-summaries.txt.",
-      "reason": "Not requested by the BuildRequest; requirement is limited to configuring token ledger canister IDs (and associated UI behavior), with constraints focused on specific frontend files.",
-      "evidence": [
-        "frontend-file-summaries.txt"
-      ]
-    },
-    {
-      "description": "Modified project_state.json to reflect new feature requests/status and summary text.",
-      "reason": "Not requested by the BuildRequest; appears to be internal tracking/metadata rather than implementing REQ-5.",
-      "evidence": [
-        "project_state.json"
-      ]
-    }
-  ],
+  "hallucinated_features": [],
   "confidence": 0.62,
   "changed_files": [
     "frontend-file-summaries.txt",
+    "frontend/src/components/dashboard/TokenLedgerDiagnosticsPanel.tsx",
     "frontend/src/config/tokens.ts",
+    "frontend/src/hooks/useTokenLedgerDiagnostics.ts",
+    "frontend/src/lib/icrc/icrcLedgerClient.ts",
+    "frontend/src/pages/DashboardPage.tsx",
     "project_state.json"
   ]
 }

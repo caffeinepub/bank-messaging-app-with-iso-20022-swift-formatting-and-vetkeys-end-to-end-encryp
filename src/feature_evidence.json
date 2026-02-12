@@ -2,8 +2,8 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-populate-the-token-configuration-so-ckbtc-cketh-and-ckusdc-have-correct-internet-computer-mainnet-ledger-canister-ids-enabling-the-send-ui-for-each-token",
-      "featureTitle": "Populate the token configuration so ckBTC, ckETH, and ckUSDC have correct Internet Computer mainnet ledger canister IDs, enabling the Send UI for each token.",
+      "featureId": "feature-confirm-ckbtc-cketh-and-ckusdc-are-configured-with-the-correct-internet-computer-mainnet-ledger-canister-ids-by-adding-a-token-configuration-self-check-that-compares-the-configured-ids-in-frontend-src-config-tokens-ts-against-the-expected-mainnet-ledger-ids-and-reports-any-mismatch",
+      "featureTitle": "Confirm ckBTC, ckETH, and ckUSDC are configured with the correct Internet Computer mainnet ledger canister IDs by adding a token configuration self-check that compares the configured IDs in `frontend/src/config/tokens.ts` against the expected mainnet ledger IDs and reports any mismatch.",
       "files": [
         "frontend/src/config/tokens.ts"
       ],
@@ -16,7 +16,48 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-5"
+        "REQ-1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-a-read-only-token-ledger-diagnostics-ui-on-the-dashboard-that-lets-the-user-verify-wiring-without-any-transfers-by-displaying-for-each-token-the-configured-ledger-canister-id-whether-it-matches-the-expected-mainnet-id-and-a-copy-to-clipboard-json-diagnostic-report",
+      "featureTitle": "Add a read-only “Token Ledger Diagnostics” UI on the Dashboard that lets the user verify wiring without any transfers by displaying (for each token) the configured ledger canister ID, whether it matches the expected mainnet ID, and a copy-to-clipboard JSON diagnostic report.",
+      "files": [
+        "frontend/src/components/dashboard/TokenLedgerDiagnosticsPanel.tsx",
+        "frontend/src/pages/DashboardPage.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-a-non-transfer-connectivity-metadata-check-per-token-ledger-canister-to-further-confirm-wiring-without-sending-funds-by-calling-read-only-icrc-methods-e-g-name-symbol-decimals-and-or-supported-standards-and-surfacing-success-failure-in-the-token-ledger-diagnostics-ui",
+      "featureTitle": "Add a non-transfer connectivity/metadata check per token ledger canister to further confirm wiring without sending funds by calling read-only ICRC methods (e.g., name/symbol/decimals and/or supported standards) and surfacing success/failure in the Token Ledger Diagnostics UI.",
+      "files": [
+        "frontend/src/components/dashboard/TokenLedgerDiagnosticsPanel.tsx",
+        "frontend/src/hooks/useTokenLedgerDiagnostics.ts",
+        "frontend/src/lib/icrc/icrcLedgerClient.ts"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-3"
       ],
       "confidence": "high"
     }

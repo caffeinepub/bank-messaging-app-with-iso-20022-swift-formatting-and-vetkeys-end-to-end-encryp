@@ -29,6 +29,39 @@ export const TOKENS: Record<string, TokenConfig> = {
   },
 };
 
+// Expected mainnet ledger canister IDs for verification
+export const EXPECTED_MAINNET_LEDGER_IDS: Record<string, string> = {
+  ckBTC: 'mxzaz-hqaaa-aaaar-qaada-cai',
+  ckETH: 'ss2fx-dyaaa-aaaar-qacoq-cai',
+  ckUSDC: 'xevnm-gaaaa-aaaar-qafnq-cai',
+};
+
+export interface TokenLedgerCheck {
+  symbol: string;
+  configuredLedgerCanisterId?: string;
+  expectedLedgerCanisterId: string;
+  matchesExpected: boolean;
+}
+
+/**
+ * Self-check function that compares configured ledger canister IDs
+ * against expected mainnet IDs without throwing errors.
+ */
+export function checkTokenLedgerConfiguration(): TokenLedgerCheck[] {
+  return Object.keys(TOKENS).map((tokenKey) => {
+    const token = TOKENS[tokenKey];
+    const expected = EXPECTED_MAINNET_LEDGER_IDS[tokenKey];
+    const configured = token.ledgerCanisterId;
+
+    return {
+      symbol: token.symbol,
+      configuredLedgerCanisterId: configured,
+      expectedLedgerCanisterId: expected,
+      matchesExpected: !!configured && configured === expected,
+    };
+  });
+}
+
 export function isTokenConfigured(tokenSymbol: string): boolean {
   const token = TOKENS[tokenSymbol];
   return !!token?.ledgerCanisterId;

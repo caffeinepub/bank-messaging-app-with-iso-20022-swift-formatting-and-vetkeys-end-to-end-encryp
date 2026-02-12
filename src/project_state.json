@@ -1,18 +1,34 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Configure an app/dashboard to support sending chain-key tokens (ckBTC, ckETH, ckUSDC) by adding correct mainnet ledger canister IDs.",
+  "summary": "App draft wired up using mainnet ledger IDs; next step is verifying ckBTC/ckETH/ckUSDC ledger ID configuration so send/receive is ready without doing real transfers.",
   "architectural_notes": [
-    "Sending ckBTC/ckETH/ckUSDC requires the correct per-token ledger canister ID to call the ledger's ICRC transfer method (e.g., icrc1_transfer)."
+    "Token settings/ledger IDs are read from frontend/src/config/tokens.ts; app is intended to use mainnet ledger IDs."
   ],
   "known_issues": [],
   "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-populate-the-token-configuration-so-ckbtc-cketh-and-ckusdc-have-correct-internet-computer-mainnet-ledger-canister-ids-enabling-the-send-ui-for-each-token",
-      "title": "Populate the token configuration so ckBTC, ckETH, and ckUSDC have correct Internet Computer mainnet ledger canister IDs, enabling the Send UI for each token.",
+      "id": "feature-confirm-ckbtc-cketh-and-ckusdc-are-configured-with-the-correct-internet-computer-mainnet-ledger-canister-ids-by-adding-a-token-configuration-self-check-that-compares-the-configured-ids-in-frontend-src-config-tokens-ts-against-the-expected-mainnet-ledger-ids-and-reports-any-mismatch",
+      "title": "Confirm ckBTC, ckETH, and ckUSDC are configured with the correct Internet Computer mainnet ledger canister IDs by adding a token configuration self-check that compares the configured IDs in `frontend/src/config/tokens.ts` against the expected mainnet ledger IDs and reports any mismatch.",
       "reqIds": [
-        "REQ-5"
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-read-only-token-ledger-diagnostics-ui-on-the-dashboard-that-lets-the-user-verify-wiring-without-any-transfers-by-displaying-for-each-token-the-configured-ledger-canister-id-whether-it-matches-the-expected-mainnet-id-and-a-copy-to-clipboard-json-diagnostic-report",
+      "title": "Add a read-only “Token Ledger Diagnostics” UI on the Dashboard that lets the user verify wiring without any transfers by displaying (for each token) the configured ledger canister ID, whether it matches the expected mainnet ID, and a copy-to-clipboard JSON diagnostic report.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-non-transfer-connectivity-metadata-check-per-token-ledger-canister-to-further-confirm-wiring-without-sending-funds-by-calling-read-only-icrc-methods-e-g-name-symbol-decimals-and-or-supported-standards-and-surfacing-success-failure-in-the-token-ledger-diagnostics-ui",
+      "title": "Add a non-transfer connectivity/metadata check per token ledger canister to further confirm wiring without sending funds by calling read-only ICRC methods (e.g., name/symbol/decimals and/or supported standards) and surfacing success/failure in the Token Ledger Diagnostics UI.",
+      "reqIds": [
+        "REQ-3"
       ],
       "version": 1
     }
@@ -20,12 +36,12 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Add/configure correct mainnet ledger canister IDs for ckBTC, ckETH, and ckUSDC so sending is enabled.",
+      "summary": "Verify ckBTC/ckETH/ckUSDC mainnet ledger IDs in frontend token config (e.g., frontend/src/config/tokens.ts) to confirm send/receive wiring without real transfers",
       "reqIds": [],
-      "status": "pending"
+      "status": "in_progress"
     }
   ],
-  "projectName": "Configure mainnet ledger canister IDs for ckBTC, ckETH, and ckUSDC",
+  "projectName": "Add non-transfer token ledger diagnostics to confirm mainnet ledger IDs are wired correctly",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

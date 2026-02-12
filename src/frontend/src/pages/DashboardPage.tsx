@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Copy, Check, Key, RefreshCw, User, Shield, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { TransportKeyDiagnosticsPanel } from '@/components/dashboard/TransportKeyDiagnosticsPanel';
+import { TokenLedgerDiagnosticsPanel } from '@/components/dashboard/TokenLedgerDiagnosticsPanel';
 import { TokensSection } from '@/components/dashboard/TokensSection';
 
 export default function DashboardPage() {
@@ -235,6 +236,8 @@ export default function DashboardPage() {
       )}
 
       <TokensSection principal={principal} />
+
+      <TokenLedgerDiagnosticsPanel />
 
       <Card>
         <CardHeader>
