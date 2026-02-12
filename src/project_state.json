@@ -1,34 +1,18 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "New project",
+  "summary": "Configure an app/dashboard to support sending chain-key tokens (ckBTC, ckETH, ckUSDC) by adding correct mainnet ledger canister IDs.",
   "architectural_notes": [
-    "Pass vetKey through navigation/routing between Dashboard and Compose to preserve selected vet context."
+    "Sending ckBTC/ckETH/ckUSDC requires the correct per-token ledger canister ID to call the ledger's ICRC transfer method (e.g., icrc1_transfer)."
   ],
   "known_issues": [],
   "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-introduce-a-frontend-vetkey-mechanism-that-allows-the-app-to-persist-and-retrieve-the-caller-s-transport-keypair-across-navigation-so-that-a-transport-key-generated-rotated-on-the-dashboard-is-available-on-the-compose-screen-without-requiring-regeneration-in-the-new-page-tab",
-      "title": "Introduce a frontend \"vetKey\" mechanism that allows the app to persist and retrieve the caller's transport keypair across navigation so that a transport key generated/rotated on the Dashboard is available on the Compose screen without requiring regeneration in the new page/tab.",
+      "id": "feature-populate-the-token-configuration-so-ckbtc-cketh-and-ckusdc-have-correct-internet-computer-mainnet-ledger-canister-ids-enabling-the-send-ui-for-each-token",
+      "title": "Populate the token configuration so ckBTC, ckETH, and ckUSDC have correct Internet Computer mainnet ledger canister IDs, enabling the Send UI for each token.",
       "reqIds": [
-        "REQ-1"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-dashboard-ui-to-surface-the-current-vetkey-and-provide-an-explicit-action-to-navigate-to-compose-while-passing-the-vetkey-value-as-a-url-parameter-or-hash-parameter-so-compose-can-load-the-correct-persisted-transport-key-context",
-      "title": "Update the Dashboard UI to surface the current vetKey and provide an explicit action to navigate to Compose while passing the vetKey value as a URL parameter (or hash parameter) so Compose can load the correct persisted transport key context.",
-      "reqIds": [
-        "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-composemessagepage-to-read-the-vetkey-from-the-url-and-or-persisted-session-and-initialize-transport-key-access-using-that-vetkey-so-that-message-sending-eligibility-checks-reflect-the-actual-locally-available-transport-keypair",
-      "title": "Update ComposeMessagePage to read the vetKey from the URL (and/or persisted session) and initialize transport key access using that vetKey so that message sending eligibility checks reflect the actual locally-available transport keypair.",
-      "reqIds": [
-        "REQ-3"
+        "REQ-5"
       ],
       "version": 1
     }
@@ -36,12 +20,12 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Use a vetKey to pass context/state between Dashboard and Compose screens",
+      "summary": "Add/configure correct mainnet ledger canister IDs for ckBTC, ckETH, and ckUSDC so sending is enabled.",
       "reqIds": [],
       "status": "pending"
     }
   ],
-  "projectName": "Use vetKey to share transport key context between Dashboard and Compose",
+  "projectName": "Configure mainnet ledger canister IDs for ckBTC, ckETH, and ckUSDC",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

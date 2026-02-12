@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Copy, Check, Key, RefreshCw, User, Shield, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { TransportKeyDiagnosticsPanel } from '@/components/dashboard/TransportKeyDiagnosticsPanel';
+import { TokensSection } from '@/components/dashboard/TokensSection';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -232,6 +233,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      <TokensSection principal={principal} />
 
       <Card>
         <CardHeader>
