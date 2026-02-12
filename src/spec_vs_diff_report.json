@@ -1,0 +1,45 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-10T09:13:43.481Z",
+  "summary": "Diff introduces a sessionStorage-backed vetKey mechanism, persists/restores transport keypairs by vetKey, updates Dashboard to expose/copy vetKey and navigate/copy a Compose link including vetKey, and updates Compose to read vetKey from URL/session and initialize transport key access accordingly. No clear missing REQ-1/2/3 items found from the provided diff summary, but there are a couple of additional (unrequested) utilities/diagnostics enhancements.",
+  "missing_requirements": [],
+  "hallucinated_features": [
+    {
+      "description": "Added standalone Base64 utility module for encoding/decoding binary data, but the shown persistence/export logic in transportKeys.ts uses direct btoa/atob conversions and does not reference this utility in the diff summary.",
+      "reason": "Not requested by the BuildRequest; appears to be auxiliary/unused (based on the truncated summaries shown).",
+      "evidence": [
+        "frontend/src/utils/base64.ts",
+        "frontend/src/lib/crypto/transportKeys.ts"
+      ]
+    },
+    {
+      "description": "Expanded/copy-to-clipboard JSON diagnostics functionality on dashboard transport key diagnostics and compose send eligibility diagnostics.",
+      "reason": "BuildRequest focuses on vetKey persistence and passing vetKey to Compose; diagnostics JSON copy features are not explicitly requested.",
+      "evidence": [
+        "frontend/src/components/dashboard/TransportKeyDiagnosticsPanel.tsx",
+        "frontend/src/components/messages/DiagnosticsPanel.tsx"
+      ]
+    },
+    {
+      "description": "Introduced vetKey lifecycle helpers beyond persistence (e.g., clearActiveVetKey, clearTransportKeyData).",
+      "reason": "Not explicitly requested; REQs only require persistence/retrieval and URL passing. These helpers may be preparatory but are additional scope.",
+      "evidence": [
+        "frontend/src/utils/vetKey.ts"
+      ]
+    }
+  ],
+  "confidence": 0.74,
+  "changed_files": [
+    "frontend-file-summaries.txt",
+    "frontend/src/components/dashboard/TransportKeyDiagnosticsPanel.tsx",
+    "frontend/src/components/messages/DiagnosticsPanel.tsx",
+    "frontend/src/hooks/useTransportKey.ts",
+    "frontend/src/lib/crypto/transportKeys.ts",
+    "frontend/src/pages/ComposeMessagePage.tsx",
+    "frontend/src/pages/DashboardPage.tsx",
+    "frontend/src/utils/base64.ts",
+    "frontend/src/utils/vetKey.ts",
+    "project_state.json"
+  ]
+}

@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --radius: 0.375rem;
+        /* Charcoal/slate base with subtle green accent for banking */
+        --background: 0.98 0 0;
+        --foreground: 0.20 0 0;
+        --card: 1 0 0;
+        --card-foreground: 0.20 0 0;
+        --popover: 1 0 0;
+        --popover-foreground: 0.20 0 0;
+        --primary: 0.35 0.08 160;
+        --primary-foreground: 0.98 0 0;
+        --secondary: 0.92 0 0;
+        --secondary-foreground: 0.20 0 0;
+        --muted: 0.94 0 0;
+        --muted-foreground: 0.50 0 0;
+        --accent: 0.88 0.06 145;
+        --accent-foreground: 0.20 0 0;
+        --destructive: 0.55 0.20 25;
+        --destructive-foreground: 0.98 0 0;
+        --border: 0.88 0 0;
+        --input: 0.88 0 0;
+        --ring: 0.35 0.08 160;
+        --chart-1: 0.60 0.15 160;
+        --chart-2: 0.55 0.12 200;
+        --chart-3: 0.50 0.10 140;
+        --chart-4: 0.65 0.18 180;
+        --chart-5: 0.70 0.20 120;
+    }
+
+    .dark {
+        --background: 0.15 0 0;
+        --foreground: 0.95 0 0;
+        --card: 0.18 0 0;
+        --card-foreground: 0.95 0 0;
+        --popover: 0.20 0 0;
+        --popover-foreground: 0.95 0 0;
+        --primary: 0.65 0.12 155;
+        --primary-foreground: 0.15 0 0;
+        --secondary: 0.25 0 0;
+        --secondary-foreground: 0.95 0 0;
+        --muted: 0.25 0 0;
+        --muted-foreground: 0.60 0 0;
+        --accent: 0.30 0.08 150;
+        --accent-foreground: 0.95 0 0;
+        --destructive: 0.60 0.22 25;
+        --destructive-foreground: 0.95 0 0;
+        --border: 0.30 0 0;
+        --input: 0.30 0 0;
+        --ring: 0.65 0.12 155;
+        --chart-1: 0.60 0.15 160;
+        --chart-2: 0.55 0.12 200;
+        --chart-3: 0.50 0.10 140;
+        --chart-4: 0.65 0.18 180;
+        --chart-5: 0.70 0.20 120;
+    }
+
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+        font-feature-settings: "rlig" 1, "calt" 1;
+    }
+}
+
+@layer utilities {
+    .font-mono-code {
+        font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Droid Sans Mono', 'Source Code Pro', monospace;
+    }
+}

@@ -1,2 +1,3 @@
-# bank-messaging-app-with-iso-20022-swift-formatting-and-vetkeys-end-to-end-encryp
-Exported from Caffeine project: Use vetKey to share transport key context between Dashboard and Compose
+## 
+
+To run app build and run docker image: `docker build -t app . docker run -it --network host app`

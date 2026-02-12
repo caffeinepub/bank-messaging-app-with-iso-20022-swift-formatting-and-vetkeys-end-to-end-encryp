@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 3,
+  "summary": "New project",
+  "architectural_notes": [
+    "Pass vetKey through navigation/routing between Dashboard and Compose to preserve selected vet context."
+  ],
+  "known_issues": [],
+  "isFixRequest": false,
+  "existing_features": [
+    {
+      "id": "feature-introduce-a-frontend-vetkey-mechanism-that-allows-the-app-to-persist-and-retrieve-the-caller-s-transport-keypair-across-navigation-so-that-a-transport-key-generated-rotated-on-the-dashboard-is-available-on-the-compose-screen-without-requiring-regeneration-in-the-new-page-tab",
+      "title": "Introduce a frontend \"vetKey\" mechanism that allows the app to persist and retrieve the caller's transport keypair across navigation so that a transport key generated/rotated on the Dashboard is available on the Compose screen without requiring regeneration in the new page/tab.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-dashboard-ui-to-surface-the-current-vetkey-and-provide-an-explicit-action-to-navigate-to-compose-while-passing-the-vetkey-value-as-a-url-parameter-or-hash-parameter-so-compose-can-load-the-correct-persisted-transport-key-context",
+      "title": "Update the Dashboard UI to surface the current vetKey and provide an explicit action to navigate to Compose while passing the vetKey value as a URL parameter (or hash parameter) so Compose can load the correct persisted transport key context.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-composemessagepage-to-read-the-vetkey-from-the-url-and-or-persisted-session-and-initialize-transport-key-access-using-that-vetkey-so-that-message-sending-eligibility-checks-reflect-the-actual-locally-available-transport-keypair",
+      "title": "Update ComposeMessagePage to read the vetKey from the URL (and/or persisted session) and initialize transport key access using that vetKey so that message sending eligibility checks reflect the actual locally-available transport keypair.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Use a vetKey to pass context/state between Dashboard and Compose screens",
+      "reqIds": [],
+      "status": "pending"
+    }
+  ],
+  "projectName": "Use vetKey to share transport key context between Dashboard and Compose",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

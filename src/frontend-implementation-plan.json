@@ -1,0 +1,80 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Persist transport keypair via session-scoped vetKey shared between Dashboard and Compose",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "summary": "Add a session-scoped vetKey context that persists/restores the caller’s transport keypair across navigation and reloads without ever sending the private key to the backend.",
+      "acceptanceCriteria": [
+        "After generating or rotating a transport key on the Dashboard, navigating to the Compose page in the same session uses the existing local transport keypair (no \"key not available on this device/tab\" error caused by page-level state reset).",
+        "The transport private key is never sent to the backend; only the public key is registered as it is today.",
+        "The persisted transport keypair can be restored after route changes and full page reloads within the same browser session (sessionStorage-based persistence is acceptable)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/utils/vetKey.ts",
+          "operation": "create",
+          "description": "Implement the frontend-only vetKey mechanism: generate/validate a vetKey identifier, store/retrieve the active vetKey for the current session, and provide helpers to build stable sessionStorage keys for the associated transport keypair context."
+        },
+        {
+          "path": "frontend/src/utils/base64.ts",
+          "operation": "create",
+          "description": "Add small utilities to safely encode/decode Uint8Array/ArrayBuffer data to/from base64 for sessionStorage persistence of exported WebCrypto keys."
+        },
+        {
+          "path": "frontend/src/lib/crypto/transportKeys.ts",
+          "operation": "modify",
+          "description": "Extend transport key utilities to support exporting/importing the transport private key (and any required metadata) for local-only persistence, enabling restoration into CryptoKey objects after reload; ensure this is strictly browser-local and never involves backend transmission."
+        },
+        {
+          "path": "frontend/src/hooks/useTransportKey.ts",
+          "operation": "modify",
+          "description": "Update useTransportKey to accept/use a vetKey context: persist the generated/rotated transport keypair into sessionStorage under the vetKey, restore it on mount/route changes, and keep existing behavior of registering only the public key to the backend; ensure no code path transmits or persists the private key outside the browser."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Update Dashboard to display the current vetKey and provide copy + navigation/link to Compose including vetKey in the URL so Compose can resolve the correct local transport-key context.",
+      "acceptanceCriteria": [
+        "Dashboard provides a way to copy the vetKey to clipboard and/or a button that navigates to the Compose route while including the vetKey in the URL.",
+        "If the user opens the generated Compose link in a new tab in the same browser session, Compose can still resolve the vetKey and load the transport keypair from session storage.",
+        "If no vetKey is available, the Dashboard action is disabled or shows a clear error toast in English."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/DashboardPage.tsx",
+          "operation": "modify",
+          "description": "Surface the current vetKey in the Dashboard UI (read-only display), add a copy-to-clipboard action, and add a \"Go to Compose\" (or \"Copy Compose Link\") action that navigates/builds a URL containing the vetKey query (or hash) parameter; disable the action or show an English toast if vetKey is unavailable."
+        },
+        {
+          "path": "frontend/src/components/dashboard/TransportKeyDiagnosticsPanel.tsx",
+          "operation": "modify",
+          "description": "Optionally extend diagnostics output to include whether a vetKey is present/active and whether a persisted keypair exists for it, improving troubleshooting for the new vetKey-based persistence."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Update ComposeMessagePage to read vetKey from URL/session and initialize transport-key access using that vetKey so canSend reflects the locally available keypair without requiring regeneration.",
+      "acceptanceCriteria": [
+        "When Compose loads with a valid vetKey in the URL, the page uses it to access the transport keypair and the send eligibility logic (\"canSend\") can become true without requiring a fresh key generation in Compose.",
+        "When Compose loads without a vetKey (or with an invalid vetKey), Compose behaves safely: it does not crash, and it shows the existing diagnostics/error messaging in English indicating the key is unavailable.",
+        "The vetKey parameter is handled using the existing URL/session parameter utilities where appropriate (e.g., persisted parameter behavior or hash-secret behavior)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/ComposeMessagePage.tsx",
+          "operation": "modify",
+          "description": "Read the vetKey from the URL and/or session using existing helpers in frontend/src/utils/urlParams.ts, validate/normalize it via the new vetKey utilities, and initialize transport key access using that vetKey so the existing canSend gating can succeed when the persisted keypair is present; handle missing/invalid vetKey safely with existing English error/diagnostics behavior."
+        },
+        {
+          "path": "frontend/src/utils/urlParams.ts",
+          "operation": "modify",
+          "description": "If needed, add a small helper (or extend existing ones) to better support persisted vetKey retrieval across query/hash forms (without changing routing), aligning Compose/Dashboard behavior with the app’s existing persisted-parameter patterns."
+        }
+      ]
+    }
+  ]
+}

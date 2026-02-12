@@ -1,0 +1,76 @@
+{
+  "kind": "build_request",
+  "title": "Use vetKey to share transport key context between Dashboard and Compose",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "text": "Introduce a frontend \"vetKey\" mechanism that allows the app to persist and retrieve the caller's transport keypair across navigation so that a transport key generated/rotated on the Dashboard is available on the Compose screen without requiring regeneration in the new page/tab.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6"
+        ],
+        "quotes": [
+          "use vet Key to pass between dashborad and compose"
+        ]
+      },
+      "acceptanceCriteria": [
+        "After generating or rotating a transport key on the Dashboard, navigating to the Compose page in the same session uses the existing local transport keypair (no \"key not available on this device/tab\" error caused by page-level state reset).",
+        "The transport private key is never sent to the backend; only the public key is registered as it is today.",
+        "The persisted transport keypair can be restored after route changes and full page reloads within the same browser session (sessionStorage-based persistence is acceptable)."
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Update the Dashboard UI to surface the current vetKey and provide an explicit action to navigate to Compose while passing the vetKey value as a URL parameter (or hash parameter) so Compose can load the correct persisted transport key context.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6"
+        ],
+        "quotes": [
+          "use vet Key to pass between dashborad and compose"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Dashboard provides a way to copy the vetKey to clipboard and/or a button that navigates to the Compose route while including the vetKey in the URL.",
+        "If the user opens the generated Compose link in a new tab in the same browser session, Compose can still resolve the vetKey and load the transport keypair from session storage.",
+        "If no vetKey is available, the Dashboard action is disabled or shows a clear error toast in English."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Update ComposeMessagePage to read the vetKey from the URL (and/or persisted session) and initialize transport key access using that vetKey so that message sending eligibility checks reflect the actual locally-available transport keypair.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6"
+        ],
+        "quotes": [
+          "use vet Key to pass between dashborad and compose"
+        ]
+      },
+      "acceptanceCriteria": [
+        "When Compose loads with a valid vetKey in the URL, the page uses it to access the transport keypair and the send eligibility logic (\"canSend\") can become true without requiring a fresh key generation in Compose.",
+        "When Compose loads without a vetKey (or with an invalid vetKey), Compose behaves safely: it does not crash, and it shows the existing diagnostics/error messaging in English indicating the key is unavailable.",
+        "The vetKey parameter is handled using the existing URL/session parameter utilities where appropriate (e.g., persisted parameter behavior or hash-secret behavior)."
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not edit files under frontend/src/components/ui (read-only components must be composed, not modified).",
+    "Do not modify the immutable auth/actor hooks (frontend/src/hooks/useInternetIdentity.ts/tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx).",
+    "Backend must remain a single Motoko actor; no additional canisters or external storage/databases.",
+    "Do not transmit or persist the transport private key to the backend; only persist it locally in the browser."
+  ],
+  "nonGoals": [
+    "Changing the backend message schema or introducing new backend endpoints for vetKey.",
+    "Adding third-party authentication or external key management services.",
+    "Implementing real-time synchronization across different devices/browsers for private keys."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

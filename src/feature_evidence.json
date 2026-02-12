@@ -1,0 +1,66 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-introduce-a-frontend-vetkey-mechanism-that-allows-the-app-to-persist-and-retrieve-the-caller-s-transport-keypair-across-navigation-so-that-a-transport-key-generated-rotated-on-the-dashboard-is-available-on-the-compose-screen-without-requiring-regeneration-in-the-new-page-tab",
+      "featureTitle": "Introduce a frontend \"vetKey\" mechanism that allows the app to persist and retrieve the caller's transport keypair across navigation so that a transport key generated/rotated on the Dashboard is available on the Compose screen without requiring regeneration in the new page/tab.",
+      "files": [
+        "frontend/src/hooks/useTransportKey.ts",
+        "frontend/src/lib/crypto/transportKeys.ts",
+        "frontend/src/utils/base64.ts",
+        "frontend/src/utils/vetKey.ts"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-update-the-dashboard-ui-to-surface-the-current-vetkey-and-provide-an-explicit-action-to-navigate-to-compose-while-passing-the-vetkey-value-as-a-url-parameter-or-hash-parameter-so-compose-can-load-the-correct-persisted-transport-key-context",
+      "featureTitle": "Update the Dashboard UI to surface the current vetKey and provide an explicit action to navigate to Compose while passing the vetKey value as a URL parameter (or hash parameter) so Compose can load the correct persisted transport key context.",
+      "files": [
+        "frontend/src/components/dashboard/TransportKeyDiagnosticsPanel.tsx",
+        "frontend/src/pages/DashboardPage.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-update-composemessagepage-to-read-the-vetkey-from-the-url-and-or-persisted-session-and-initialize-transport-key-access-using-that-vetkey-so-that-message-sending-eligibility-checks-reflect-the-actual-locally-available-transport-keypair",
+      "featureTitle": "Update ComposeMessagePage to read the vetKey from the URL (and/or persisted session) and initialize transport key access using that vetKey so that message sending eligibility checks reflect the actual locally-available transport keypair.",
+      "files": [
+        "frontend/src/pages/ComposeMessagePage.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-3"
+      ],
+      "confidence": "high"
+    }
+  ]
+}
