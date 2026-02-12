@@ -1,69 +1,57 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Token ledger diagnostics (non-transfer) for ckBTC/ckETH/ckUSDC",
+  "title": "Add ckBTC/ckETH/ckUSDC glyph symbols across token UI",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Add a token configuration self-check comparing configured ledger canister IDs against expected mainnet IDs and reporting mismatches without throwing.",
+      "summary": "Extend token configuration with a human-friendly glyph for ckBTC, ckETH, and ckUSDC and provide an accessor by token key.",
       "acceptanceCriteria": [
-        "A single function (or equivalent) exists that returns, per token (ckBTC/ckETH/ckUSDC), the configured ledger canister ID, the expected mainnet ledger canister ID, and a boolean indicating whether they match exactly.",
-        "When a token is missing a ledger canister ID, the self-check reports it as not configured and does not throw.",
-        "The expected mainnet ledger canister IDs used for the comparison are: ckBTC = mxzaz-hqaaa-aaaar-qaada-cai; ckETH = ss2fx-dyaaa-aaaar-qacoq-cai; ckUSDC = xevnm-gaaaa-aaaar-qafnq-cai."
+        "`frontend/src/config/tokens.ts` includes a new field on token configs (or a dedicated mapping) that provides a symbol glyph for ckBTC, ckETH, and ckUSDC.",
+        "There is a simple accessor (e.g., via `getTokenConfig` or a new helper) that the UI can use to fetch the glyph for a given token key.",
+        "Existing token configuration checks and existing properties (name, symbol, ledgerCanisterId, decimals) continue to work without regressions."
       ],
       "file_operations": [
         {
           "path": "frontend/src/config/tokens.ts",
           "operation": "modify",
-          "description": "Add an expected-mainnet ledger canister ID mapping for ckBTC/ckETH/ckUSDC and implement a single self-check function that returns (per token) symbol, configuredLedgerCanisterId (or undefined), expectedLedgerCanisterId, and matchesExpected (false when missing/mismatched) without throwing when not configured."
+          "description": "Add a distinct presentational glyph for ckBTC/ckETH/ckUSDC (either as a new `glyph` field on `TokenConfig` and each `TOKENS` entry, or as a dedicated `TOKEN_GLYPHS` mapping). Export a small helper (e.g., `getTokenGlyph(tokenKey: string): string`) that safely returns the configured glyph (with a sensible fallback) without changing existing config validation behavior."
         }
       ]
     },
     {
       "id": "REQ-2",
-      "summary": "Add a read-only Token Ledger Diagnostics panel on the Dashboard that displays per-token configured vs expected ledger IDs and supports copy-to-clipboard JSON reporting.",
+      "summary": "Show configured glyphs alongside token tickers in the Dashboard Tokens section.",
       "acceptanceCriteria": [
-        "The Dashboard page shows a new diagnostics card/panel dedicated to token ledger configuration (in addition to the existing Transport Key Diagnostics).",
-        "For each of ckBTC, ckETH, ckUSDC, the panel shows: token symbol, configured ledger canister ID (or a clear “Not configured” state), and a status indicator for “Matches expected mainnet ID” vs “Mismatch”.",
-        "The panel provides a “Copy JSON” action that copies a JSON blob including timestamp and per-token fields (symbol, configuredLedgerCanisterId, expectedLedgerCanisterId, matchesExpected).",
-        "All user-facing text in this panel is in English."
+        "In `frontend/src/components/dashboard/TokensSection.tsx`, each token row/card shows both the token ticker (ckBTC/ckETH/ckUSDC) and the configured glyph from the token config.",
+        "The glyph display is purely presentational (no new backend calls) and renders correctly in both light and dark themes."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/dashboard/TokenLedgerDiagnosticsPanel.tsx",
-          "operation": "create",
-          "description": "Create a new Dashboard diagnostics card that renders the token self-check results (ckBTC/ckETH/ckUSDC) and provides a “Copy JSON” action that copies a timestamped JSON diagnostic blob. Use existing shadcn-ui components (e.g., Card, Badge, Button, Separator) for consistent UI. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/pages/DashboardPage.tsx",
+          "path": "frontend/src/components/dashboard/TokensSection.tsx",
           "operation": "modify",
-          "description": "Wire the new TokenLedgerDiagnosticsPanel into the Dashboard page so it appears as a dedicated diagnostics card/panel in addition to the existing TransportKeyDiagnosticsPanel, and ensure all displayed text is English. Verify the component's usage instructions before implementing."
+          "description": "Import the new glyph accessor from `@/config/tokens` and render the glyph next to the token ticker in the token header area for each token card/row, using existing Tailwind theme tokens/classes so it remains legible in light and dark modes. Keep the change presentational only (no new data fetching)."
         }
       ]
     },
     {
       "id": "REQ-3",
-      "summary": "Add a non-transfer ledger connectivity/metadata verification per configured token using read-only ICRC calls and surface success/failure and returned metadata in the diagnostics UI and JSON copy report.",
+      "summary": "Use token glyphs consistently in send/receive panel headings, button text, and success messages (English UI text).",
       "acceptanceCriteria": [
-        "The app performs only read-only calls for this verification (no transfer calls are made).",
-        "For each configured token, the diagnostics UI shows whether the metadata check succeeded and displays returned values (at minimum decimals) when available.",
-        "If a ledger call fails (e.g., due to network/agent/canister issues), the UI shows a non-crashing error state for that token and still allows copying diagnostics JSON including the error message/stringified failure."
+        "`frontend/src/components/dashboard/TokenReceivePanel.tsx` displays the token glyph alongside the token ticker in the main heading (e.g., \"Your ₿ ckBTC Receiving Address\" or similar).",
+        "`frontend/src/components/dashboard/TokenSendPanel.tsx` includes the glyph alongside the token ticker in the primary action button label and the success toast message.",
+        "All existing validation and disabled-state behavior remains unchanged."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/lib/icrc/icrcLedgerClient.ts",
-          "operation": "create",
-          "description": "Add a small client helper that can perform read-only ICRC ledger metadata calls (e.g., name/symbol/decimals and/or supported standards) against a provided ledger canister ID, using the app’s existing agent/identity context where appropriate, and ensuring no transfer/write methods are invoked. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/hooks/useTokenLedgerDiagnostics.ts",
-          "operation": "create",
-          "description": "Create a React Query-based hook that (a) computes configured-vs-expected self-check results and (b) for each configured token performs read-only metadata calls via the ICRC client, returning per-token success, metadata (at minimum decimals when available), and a safe error string on failure (no crashes). Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/dashboard/TokenLedgerDiagnosticsPanel.tsx",
+          "path": "frontend/src/components/dashboard/TokenReceivePanel.tsx",
           "operation": "modify",
-          "description": "Extend the panel to call useTokenLedgerDiagnostics and display per-token metadata check status, show returned values (at minimum decimals) when available, and render a non-crashing error state when calls fail; ensure the “Copy JSON” report includes per-token error text (when any) alongside symbol/configured/expected/matchesExpected and metadata fields. Verify the component's usage instructions before implementing."
+          "description": "Import the glyph accessor from `@/config/tokens` and update the main heading text to include the glyph alongside the token ticker (English phrasing). Keep all copy-to-clipboard and empty-state behavior unchanged."
+        },
+        {
+          "path": "frontend/src/components/dashboard/TokenSendPanel.tsx",
+          "operation": "modify",
+          "description": "Import the glyph accessor from `@/config/tokens` and include the glyph alongside the token ticker in (1) the primary send button label and (2) the success toast message. Preserve existing validation, disabled-state, and placeholder send logic behavior."
         }
       ]
     }

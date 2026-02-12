@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Copy, Check, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { getTokenGlyph } from '@/config/tokens';
 
 interface TokenReceivePanelProps {
   tokenSymbol: string;
@@ -10,6 +11,7 @@ interface TokenReceivePanelProps {
 
 export function TokenReceivePanel({ tokenSymbol, receivingAddress }: TokenReceivePanelProps) {
   const [copied, setCopied] = useState(false);
+  const glyph = getTokenGlyph(tokenSymbol);
 
   const handleCopy = async () => {
     if (!receivingAddress) {
@@ -44,7 +46,9 @@ export function TokenReceivePanel({ tokenSymbol, receivingAddress }: TokenReceiv
   return (
     <div className="space-y-3">
       <div>
-        <p className="text-sm font-medium mb-2">Your {tokenSymbol} Receiving Address</p>
+        <p className="text-sm font-medium mb-2">
+          Your {glyph} {tokenSymbol} Receiving Address
+        </p>
         <div className="flex items-start gap-2">
           <code className="flex-1 text-xs bg-muted p-3 rounded font-mono-code break-all border border-border">
             {receivingAddress}
@@ -60,7 +64,7 @@ export function TokenReceivePanel({ tokenSymbol, receivingAddress }: TokenReceiv
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        Share this address to receive {tokenSymbol} tokens. This is your Internet Computer Principal.
+        Share this address to receive {glyph} {tokenSymbol} tokens. This is your Internet Computer Principal.
       </p>
     </div>
   );

@@ -1,7 +1,7 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-12T23:04:29.079Z",
+  "generatedAt": "2026-02-12T23:18:59.797Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
@@ -12,7 +12,7 @@
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Confirm ckBTC, ckETH, and ckUSDC are configured with the correct Internet Computer mainnet ledger canister IDs by adding a token configuration self-check that compares the configured IDs in `frontend/src/config/tokens.ts` against the expected mainnet ledger IDs and reports any mismatch.",
+        "summary": "Extend the token configuration to include a distinct human-friendly token symbol glyph for ckBTC, ckETH, and ckUSDC (e.g., ₿, Ξ, $, or other clearly recognizable glyphs) and expose a helper to retrieve it by token key.",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/config/tokens.ts"
@@ -23,30 +23,26 @@
       },
       {
         "id": "REQ-2",
-        "summary": "Add a read-only “Token Ledger Diagnostics” UI on the Dashboard that lets the user verify wiring without any transfers by displaying (for each token) the configured ledger canister ID, whether it matches the expected mainnet ID, and a copy-to-clipboard JSON diagnostic report.",
+        "summary": "Display the token symbol glyphs for ckBTC, ckETH, and ckUSDC in the Dashboard Tokens section so users can visually distinguish tokens at a glance.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/dashboard/TokenLedgerDiagnosticsPanel.tsx",
-          "frontend/src/pages/DashboardPage.tsx"
+          "frontend/src/components/dashboard/TokensSection.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/dashboard/TokenLedgerDiagnosticsPanel.tsx",
-          "frontend/src/pages/DashboardPage.tsx"
+          "frontend/src/components/dashboard/TokensSection.tsx"
         ]
       },
       {
         "id": "REQ-3",
-        "summary": "Add a non-transfer connectivity/metadata check per token ledger canister to further confirm wiring without sending funds by calling read-only ICRC methods (e.g., name/symbol/decimals and/or supported standards) and surfacing success/failure in the Token Ledger Diagnostics UI.",
+        "summary": "Use the configured token symbol glyph consistently anywhere the token symbol is presented in the send/receive panels (headings, button text, and success messages), while keeping user-facing text in English.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/lib/icrc/icrcLedgerClient.ts",
-          "frontend/src/hooks/useTokenLedgerDiagnostics.ts",
-          "frontend/src/components/dashboard/TokenLedgerDiagnosticsPanel.tsx"
+          "frontend/src/components/dashboard/TokenReceivePanel.tsx",
+          "frontend/src/components/dashboard/TokenSendPanel.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/lib/icrc/icrcLedgerClient.ts",
-          "frontend/src/hooks/useTokenLedgerDiagnostics.ts",
-          "frontend/src/components/dashboard/TokenLedgerDiagnosticsPanel.tsx"
+          "frontend/src/components/dashboard/TokenReceivePanel.tsx",
+          "frontend/src/components/dashboard/TokenSendPanel.tsx"
         ]
       }
     ]
@@ -56,11 +52,10 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/dashboard/TokenLedgerDiagnosticsPanel.tsx",
+    "frontend/src/components/dashboard/TokenReceivePanel.tsx",
+    "frontend/src/components/dashboard/TokenSendPanel.tsx",
+    "frontend/src/components/dashboard/TokensSection.tsx",
     "frontend/src/config/tokens.ts",
-    "frontend/src/hooks/useTokenLedgerDiagnostics.ts",
-    "frontend/src/lib/icrc/icrcLedgerClient.ts",
-    "frontend/src/pages/DashboardPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

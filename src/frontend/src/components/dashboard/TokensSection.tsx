@@ -30,7 +30,10 @@ export function TokensSection({ principal }: TokensSectionProps) {
             <div key={tokenSymbol} className="space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-lg">{tokenSymbol}</h3>
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <span className="text-primary">{tokenConfig.glyph}</span>
+                    <span>{tokenSymbol}</span>
+                  </h3>
                   <p className="text-xs text-muted-foreground">{tokenConfig.name}</p>
                 </div>
               </div>

@@ -2,8 +2,8 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-confirm-ckbtc-cketh-and-ckusdc-are-configured-with-the-correct-internet-computer-mainnet-ledger-canister-ids-by-adding-a-token-configuration-self-check-that-compares-the-configured-ids-in-frontend-src-config-tokens-ts-against-the-expected-mainnet-ledger-ids-and-reports-any-mismatch",
-      "featureTitle": "Confirm ckBTC, ckETH, and ckUSDC are configured with the correct Internet Computer mainnet ledger canister IDs by adding a token configuration self-check that compares the configured IDs in `frontend/src/config/tokens.ts` against the expected mainnet ledger IDs and reports any mismatch.",
+      "featureId": "feature-extend-the-token-configuration-to-include-a-distinct-human-friendly-token-symbol-glyph-for-ckbtc-cketh-and-ckusdc-e-g-or-other-clearly-recognizable-glyphs-and-expose-a-helper-to-retrieve-it-by-token-key",
+      "featureTitle": "Extend the token configuration to include a distinct human-friendly token symbol glyph for ckBTC, ckETH, and ckUSDC (e.g., ₿, Ξ, $, or other clearly recognizable glyphs) and expose a helper to retrieve it by token key.",
       "files": [
         "frontend/src/config/tokens.ts"
       ],
@@ -21,11 +21,10 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-add-a-read-only-token-ledger-diagnostics-ui-on-the-dashboard-that-lets-the-user-verify-wiring-without-any-transfers-by-displaying-for-each-token-the-configured-ledger-canister-id-whether-it-matches-the-expected-mainnet-id-and-a-copy-to-clipboard-json-diagnostic-report",
-      "featureTitle": "Add a read-only “Token Ledger Diagnostics” UI on the Dashboard that lets the user verify wiring without any transfers by displaying (for each token) the configured ledger canister ID, whether it matches the expected mainnet ID, and a copy-to-clipboard JSON diagnostic report.",
+      "featureId": "feature-display-the-token-symbol-glyphs-for-ckbtc-cketh-and-ckusdc-in-the-dashboard-tokens-section-so-users-can-visually-distinguish-tokens-at-a-glance",
+      "featureTitle": "Display the token symbol glyphs for ckBTC, ckETH, and ckUSDC in the Dashboard Tokens section so users can visually distinguish tokens at a glance.",
       "files": [
-        "frontend/src/components/dashboard/TokenLedgerDiagnosticsPanel.tsx",
-        "frontend/src/pages/DashboardPage.tsx"
+        "frontend/src/components/dashboard/TokensSection.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -41,12 +40,11 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-add-a-non-transfer-connectivity-metadata-check-per-token-ledger-canister-to-further-confirm-wiring-without-sending-funds-by-calling-read-only-icrc-methods-e-g-name-symbol-decimals-and-or-supported-standards-and-surfacing-success-failure-in-the-token-ledger-diagnostics-ui",
-      "featureTitle": "Add a non-transfer connectivity/metadata check per token ledger canister to further confirm wiring without sending funds by calling read-only ICRC methods (e.g., name/symbol/decimals and/or supported standards) and surfacing success/failure in the Token Ledger Diagnostics UI.",
+      "featureId": "feature-use-the-configured-token-symbol-glyph-consistently-anywhere-the-token-symbol-is-presented-in-the-send-receive-panels-headings-button-text-and-success-messages-while-keeping-user-facing-text-in-english",
+      "featureTitle": "Use the configured token symbol glyph consistently anywhere the token symbol is presented in the send/receive panels (headings, button text, and success messages), while keeping user-facing text in English.",
       "files": [
-        "frontend/src/components/dashboard/TokenLedgerDiagnosticsPanel.tsx",
-        "frontend/src/hooks/useTokenLedgerDiagnostics.ts",
-        "frontend/src/lib/icrc/icrcLedgerClient.ts"
+        "frontend/src/components/dashboard/TokenReceivePanel.tsx",
+        "frontend/src/components/dashboard/TokenSendPanel.tsx"
       ],
       "components": [
         "authorization@4.0.0",

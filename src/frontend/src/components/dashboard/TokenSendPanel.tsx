@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Send, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { getTokenGlyph } from '@/config/tokens';
 
 interface TokenSendPanelProps {
   tokenSymbol: string;
@@ -16,6 +17,7 @@ export function TokenSendPanel({ tokenSymbol, isConfigured, decimals }: TokenSen
   const [amount, setAmount] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [errors, setErrors] = useState<{ destination?: string; amount?: string }>({});
+  const glyph = getTokenGlyph(tokenSymbol);
 
   const validateInputs = (): boolean => {
     const newErrors: { destination?: string; amount?: string } = {};
@@ -47,7 +49,7 @@ export function TokenSendPanel({ tokenSymbol, isConfigured, decimals }: TokenSen
     try {
       // Placeholder for actual send logic
       await new Promise((resolve) => setTimeout(resolve, 1500));
-      toast.success(`${amount} ${tokenSymbol} sent successfully`);
+      toast.success(`${amount} ${glyph} ${tokenSymbol} sent successfully`);
       setDestination('');
       setAmount('');
       setErrors({});
@@ -124,7 +126,7 @@ export function TokenSendPanel({ tokenSymbol, isConfigured, decimals }: TokenSen
         className="w-full gap-2"
       >
         <Send className={`h-4 w-4 ${isSending ? 'animate-pulse' : ''}`} />
-        {isSending ? 'Sending...' : `Send ${tokenSymbol}`}
+        {isSending ? 'Sending...' : `Send ${glyph} ${tokenSymbol}`}
       </Button>
     </div>
   );
