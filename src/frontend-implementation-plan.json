@@ -1,82 +1,40 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Client-side E2EE for encrypted messaging (WebCrypto AES-GCM + RSA-OAEP)",
+  "title": "Encrypted message detail retrieval with authorized access messaging and Sender/Receiver labels",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Encrypt outgoing ISO 20022 / SWIFT plaintext locally with per-message AES-GCM, wrap the AES key using recipient RSA-OAEP public key, and send only ciphertext + encrypted symmetric key to the backend.",
+      "id": "REQ-7",
+      "summary": "Load message details by id from the backend single-message fetch capability and show clear unauthorized/not-found UI states.",
       "acceptanceCriteria": [
-        "When sending a message from ComposeMessagePage, the backend sendMessage call is made with encryptedPayload and keyId/encrypted key bytes only (no plaintext is sent).",
-        "If the recipient does not have a publicKey registered, the UI blocks sending and shows a clear error in English.",
-        "Encryption uses WebCrypto (AES-GCM + RSA-OAEP) and produces different ciphertext for the same plaintext on repeated sends (fresh IV / key per message)."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/lib/crypto/e2ee.ts",
-          "operation": "modify",
-          "description": "Align the hybrid crypto helper API to E2EE naming: return and accept `encryptedSymmetricKey` (RSA-OAEP-wrapped per-message AES key) instead of `keyId`; keep AES-GCM per-message key generation and fresh IV behavior; add/adjust inline comments to explicitly state that this is the encrypted symmetric key used for E2EE (not a “vetKey”)."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Update the send-message mutation parameter naming to `encryptedSymmetricKey` and pass it to the backend sendMessage call; remove/replace any `keyId` naming so that only ciphertext + encrypted symmetric key are transported from the client."
-        },
-        {
-          "path": "frontend/src/pages/ComposeMessagePage.tsx",
-          "operation": "modify",
-          "description": "Ensure ComposeMessagePage generates ISO 20022/SWIFT raw plaintext locally, encrypts it via the E2EE helper, and calls `useSendMessage` with only `encryptedPayload` + `encryptedSymmetricKey` (no plaintext). Strengthen UI blocking when `recipientProfile.publicKey` is missing with a clear English error message; keep the existing sync-status gating so sending is prevented unless encryption prerequisites are satisfied."
-        }
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "summary": "Decrypt received message content client-side using only the locally stored private key and show clear English error states when decryption is not possible or fails.",
-      "acceptanceCriteria": [
-        "Opening a received message in MessageDetailPage decrypts successfully when the recipient has their transport private key available locally.",
-        "If the user lacks a local keyPair/privateKey, MessageDetailPage shows an English error state indicating the device cannot decrypt the message.",
-        "If a non-recipient attempts to decrypt a message (or ciphertext/key mismatch occurs), the UI shows an English error and does not display any plaintext."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/MessageDetailPage.tsx",
-          "operation": "modify",
-          "description": "Update MessageDetailPage decryption flow to use `message.encryptedSymmetricKey` with the local `keyPair.privateKey`. Add an explicit error state when no local transport key/private key is available. Prevent plaintext from rendering on any decryption failure. Optionally gate decryption attempts to received messages (or show an English informational/error state for sent messages that are not decryptable by the sender)."
-        },
-        {
-          "path": "frontend/src/lib/crypto/e2ee.ts",
-          "operation": "modify",
-          "description": "Update `decryptPayload` to accept `encryptedSymmetricKey` naming and ensure decryption failures propagate cleanly so UI can show an English error without exposing any plaintext."
-        }
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "summary": "Clarify naming/intent of the per-message RSA-OAEP encrypted symmetric key field across frontend code so it is not mislabeled as a vetKey, while maintaining interoperability.",
-      "acceptanceCriteria": [
-        "Code identifiers and inline comments no longer imply that the stored per-message encrypted key is a “vetKey” (it is the encrypted symmetric key for E2EE).",
-        "Frontend and backend still interoperate after the rename/clarification (send -> store -> list -> decrypt flow works)."
+        "Navigating to a message detail route fetches the message by id from the backend rather than relying solely on the full inbox list already in cache.",
+        "If the backend indicates unauthorized access, the UI shows an English error message explaining the viewer is not an authorized participant for that message.",
+        "If the backend indicates not found, the UI shows an English 'Message not found' style error state and provides a way to return to the inbox."
       ],
       "file_operations": [
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Rename client-side message field handling from `keyId` to `encryptedSymmetricKey` (and update any types/imports accordingly). If needed for compatibility, normalize older message objects by mapping a legacy `keyId` field into `encryptedSymmetricKey` in the query result (without changing stored data), and document via inline comments that the value is the RSA-OAEP encrypted per-message symmetric key used for E2EE decryption."
-        },
-        {
-          "path": "frontend/src/pages/InboxPage.tsx",
-          "operation": "modify",
-          "description": "Update InboxPage to consume the normalized encrypted-message shape (no `keyId` naming assumptions) and keep showing direction badges ('Received'/'Sent') based on `to`/`from` vs current principal, without introducing any frontend workaround calls."
-        },
-        {
-          "path": "frontend/src/pages/ComposeMessagePage.tsx",
-          "operation": "modify",
-          "description": "Replace any lingering `keyId` naming in ComposeMessagePage with `encryptedSymmetricKey` and add a brief inline comment clarifying it is the RSA-OAEP encrypted per-message AES key for E2EE (distinct from the session-scoped vetKey used for transport key persistence)."
+          "description": "Add a React Query hook (e.g., useGetMessageById) that calls the backend actor's getMessageById and exposes loading/error states. Use this to ensure the message detail view can fetch independently of the inbox list. Verify the component's usage instructions before implementing (authorization component guidance for handling trap-based authorization errors in the UI)."
         },
         {
           "path": "frontend/src/pages/MessageDetailPage.tsx",
           "operation": "modify",
-          "description": "Replace any lingering `keyId` naming in MessageDetailPage with `encryptedSymmetricKey` and adjust inline comments/error text to reflect that decryption uses the locally stored private key to unwrap the per-message symmetric key (not any vetKey)."
+          "description": "Refactor to fetch the message via the new single-message hook using the route param id (BigInt conversion as needed) instead of searching the cached inbox list. Add explicit UI handling for backend errors: show an English unauthorized message when the backend rejects access, show an English not-found message when the id is missing, and include a clear 'Back to Inbox' action in both cases. Verify the component's usage instructions before implementing (authorization component guidance: gracefully handle Runtime.trap authorization failures)."
+        }
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "summary": "Rename participant labels in message details to 'Sender' and 'Receiver' and display their Principal (or profile name) values accordingly.",
+      "acceptanceCriteria": [
+        "In the message detail UI, the participant fields are labeled 'Sender' and 'Receiver' (English) while displaying the corresponding Principal values (or profile names if available)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/MessageDetailPage.tsx",
+          "operation": "modify",
+          "description": "Update the message participant section to use 'Sender' and 'Receiver' labels (replacing 'From'/'To') while continuing to display the resolved profile name when available, otherwise the Principal string. Ensure the values map to message.from (Sender) and message.to (Receiver) consistently for both sent and received messages. Verify the component's usage instructions before implementing."
         }
       ]
     }

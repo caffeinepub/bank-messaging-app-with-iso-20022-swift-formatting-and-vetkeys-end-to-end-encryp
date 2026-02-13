@@ -1,37 +1,58 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-13T00:24:18.930Z",
-  "summary": "Diff implements client-side hybrid E2EE (AES-GCM + RSA-OAEP) utilities, updates frontend send hook to send only encrypted fields, updates message types/field naming to `encryptedSymmetricKey` (with a backend migration), and updates Inbox to show Received/Sent direction badges. However, evidence is insufficient/absent for the backend retrieval filtering AC, and MessageDetailPage does not clearly surface an error when no local private key exists.",
+  "generatedAt": "2026-02-13T00:45:14.627Z",
+  "summary": "Diff adds message record fields (from/to Principals, encrypted payload/key) and frontend hooks/page to fetch a single message by id, but the backend single-message API and its sender/receiver authorization behavior are not evidenced in the truncated backend diff. Sender/Receiver UI labeling and a clear not-found/unauthorized navigation UX are not fully evidenced due to truncation.",
   "missing_requirements": [
     {
-      "id": "REQ-2",
-      "requirement": "Backend message retrieval returns messages where (m.to == caller) OR (m.from == caller), while returning only encrypted fields.",
-      "reason": "Frontend now calls `actor.getAllMessagesForCaller()`, but the backend diff is truncated before any `getMessages`/`getAllMessagesForCaller` implementation is shown, so there is no direct evidence that the backend filtering logic `(to == caller) OR (from == caller)` is implemented and that only encrypted fields are returned.",
+      "id": "REQ-6",
+      "requirement": "Add a backend API to fetch a single message by id that only returns the message if the authenticated caller Principal is either the sender Principal or the receiver Principal for that message; otherwise reject with an authorization error (and return a clear not-found error if id does not exist).",
+      "reason": "Frontend calls `actor.getMessageById(messageId)` but the backend diff snippet does not show any `getMessageById` method nor the required authorization/not-found handling logic. Because `backend/main.mo` is truncated, this cannot be confirmed as implemented.",
       "evidence": [
-        "frontend/src/hooks/useQueries.ts",
-        "backend/main.mo (truncated)"
+        "backend/main.mo (truncated)",
+        "frontend/src/hooks/useQueries.ts (calls actor.getMessageById)"
       ]
     },
     {
-      "id": "REQ-3",
-      "requirement": "If the user lacks a local keyPair/privateKey, MessageDetailPage shows an English error state indicating the device cannot decrypt the message.",
-      "reason": "MessageDetailPage only attempts decryption when `message && keyPair && ...`; if `keyPair` is missing, it does not set an explicit error state/message indicating the device cannot decrypt.",
+      "id": "REQ-7",
+      "requirement": "Update the frontend message detail view to handle authorization/not-found errors with clear English UI messaging and provide a way to return to the inbox.",
+      "reason": "The message detail page includes some error parsing and messaging, but the diff is truncated mid-string and does not show the full not-found message and whether a 'return to inbox' action is provided.",
       "evidence": [
-        "frontend/src/pages/MessageDetailPage.tsx"
+        "frontend/src/pages/MessageDetailPage.tsx (truncated)"
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "requirement": "In the message detail UI, label the participant fields as 'Sender' and 'Receiver' while displaying the corresponding Principal values (or profile names if available).",
+      "reason": "The message detail page references `senderProfile` and `recipientProfile` but the displayed UI section containing participant labels is not present in the truncated excerpt, so the required 'Sender'/'Receiver' labels cannot be verified.",
+      "evidence": [
+        "frontend/src/pages/MessageDetailPage.tsx (truncated)"
       ]
     }
   ],
-  "hallucinated_features": [],
+  "hallucinated_features": [
+    {
+      "description": "Added migration scaffolding (`backend/migration.mo`) and wired actor migration via `(with migration = Migration.run)`.",
+      "reason": "BuildRequest did not ask for a migration system or a no-op migration module; it may be harmless but is not part of REQ-5..REQ-8.",
+      "evidence": [
+        "backend/migration.mo",
+        "backend/main.mo (imports Migration and uses `(with migration = Migration.run)`)"
+      ]
+    },
+    {
+      "description": "Introduced/expanded role-based access control and authorization mixins for user profile and trusted contacts operations (e.g., `AccessControl.hasPermission(..., #user)` gates, admin checks).",
+      "reason": "Requirements focus on message retrieval authorization strictly by sender/receiver principals; broader RBAC for profiles/contacts is not requested.",
+      "evidence": [
+        "backend/main.mo (imports MixinAuthorization/AccessControl; traps 'Only users can view/save profiles'; trusted contacts permission checks)"
+      ]
+    }
+  ],
   "confidence": 0.62,
   "changed_files": [
     "backend/main.mo",
     "backend/migration.mo",
     "frontend-file-summaries.txt",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/lib/crypto/e2ee.ts",
-    "frontend/src/pages/ComposeMessagePage.tsx",
-    "frontend/src/pages/InboxPage.tsx",
     "frontend/src/pages/MessageDetailPage.tsx",
     "project_state.json"
   ]

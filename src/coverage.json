@@ -1,64 +1,50 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-13T00:24:18.933Z",
+  "generatedAt": "2026-02-13T00:45:14.630Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
     "total": 4,
-    "implemented": 3,
+    "implemented": 2,
     "items": [
       {
-        "id": "REQ-1",
-        "summary": "Ensure outgoing messages are end-to-end encrypted on the client before calling the backend sendMessage API: generate the ISO 20022 / SWIFT raw plaintext locally, encrypt it using a per-message AES-GCM key, encrypt that AES key with the recipient’s registered RSA public key (RSA-OAEP), and only send ciphertext + encrypted AES key to the backend (never plaintext).",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/lib/crypto/e2ee.ts",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/ComposeMessagePage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/lib/crypto/e2ee.ts",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/ComposeMessagePage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-2",
-        "summary": "Make message retrieval consistent with end-to-end encrypted messaging by returning both received and sent messages for the authenticated user (so the inbox can show both directions), while keeping message content stored and transported only as encrypted bytes.",
+        "id": "REQ-5",
+        "summary": "Ensure encrypted message records are stored on-chain as ciphertext only, and each stored message includes both participant public addresses as Principals (sender and receiver) so that authorization can be enforced using those two Principals.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-3",
-        "summary": "Ensure recipients can decrypt message content client-side using only their locally stored private key (device-only key), and display a clear error when decryption fails (e.g., message not intended for this recipient or missing local private key).",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/MessageDetailPage.tsx",
-          "frontend/src/lib/crypto/e2ee.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/MessageDetailPage.tsx",
-          "frontend/src/lib/crypto/e2ee.ts"
-        ]
+        "id": "REQ-6",
+        "summary": "Add a backend API to fetch a single message by id that only returns the message if the authenticated caller Principal is either the sender Principal or the receiver Principal for that message; otherwise reject with an authorization error.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
-        "id": "REQ-4",
-        "summary": "Clarify naming and intent of the encrypted symmetric key field end-to-end (frontend + backend types), so it is not mislabeled as a vetKey: keep compatibility where possible, but ensure code and type names/documentation clearly indicate this field is the RSA-OAEP encrypted per-message symmetric key used for E2EE decryption.",
+        "id": "REQ-7",
+        "summary": "Update the frontend message detail view to load the message via the new single-message backend API (by id) and handle authorization/not-found errors with clear English UI messaging.",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/InboxPage.tsx",
-          "frontend/src/pages/ComposeMessagePage.tsx",
           "frontend/src/pages/MessageDetailPage.tsx"
         ],
         "matchedFiles": [
           "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/InboxPage.tsx",
-          "frontend/src/pages/ComposeMessagePage.tsx",
+          "frontend/src/pages/MessageDetailPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-8",
+        "summary": "Update user-facing labels to clearly refer to the two message participants as 'Sender' and 'Receiver' (Principals) wherever the message participants are displayed in message details.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/MessageDetailPage.tsx"
+        ],
+        "matchedFiles": [
           "frontend/src/pages/MessageDetailPage.tsx"
         ]
       }
@@ -76,9 +62,6 @@
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/lib/crypto/e2ee.ts",
-    "frontend/src/pages/ComposeMessagePage.tsx",
-    "frontend/src/pages/InboxPage.tsx",
     "frontend/src/pages/MessageDetailPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",

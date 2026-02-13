@@ -44,6 +44,7 @@ export interface _SERVICE {
   'getAllMessagesForCaller' : ActorMethod<[], Array<EncryptedMessage>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getMessageById' : ActorMethod<[bigint], EncryptedMessage>,
   /**
    * / Get the relationship status between the caller and another user.
    * / This includes public key and trust relationship info.

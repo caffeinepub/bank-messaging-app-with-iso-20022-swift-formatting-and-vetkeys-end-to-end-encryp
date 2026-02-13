@@ -1,94 +1,99 @@
 {
   "kind": "build_request",
-  "title": "Implement end-to-end encryption for sending messages",
+  "title": "Encrypted on-chain message storage restricted to sender/receiver principals",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-1",
-      "text": "Ensure outgoing messages are end-to-end encrypted on the client before calling the backend sendMessage API: generate the ISO 20022 / SWIFT raw plaintext locally, encrypt it using a per-message AES-GCM key, encrypt that AES key with the recipient’s registered RSA public key (RSA-OAEP), and only send ciphertext + encrypted AES key to the backend (never plaintext).",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-user-1"
-        ],
-        "quotes": [
-          "implement end-to-end encryption for send messages"
-        ]
-      },
-      "acceptanceCriteria": [
-        "When sending a message from ComposeMessagePage, the backend sendMessage call is made with encryptedPayload and keyId/encrypted key bytes only (no plaintext is sent).",
-        "If the recipient does not have a publicKey registered, the UI blocks sending and shows a clear error in English.",
-        "Encryption uses WebCrypto (AES-GCM + RSA-OAEP) and produces different ciphertext for the same plaintext on repeated sends (fresh IV / key per message)."
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "text": "Make message retrieval consistent with end-to-end encrypted messaging by returning both received and sent messages for the authenticated user (so the inbox can show both directions), while keeping message content stored and transported only as encrypted bytes.",
+      "id": "REQ-5",
+      "text": "Ensure encrypted message records are stored on-chain as ciphertext only, and each stored message includes both participant public addresses as Principals (sender and receiver) so that authorization can be enforced using those two Principals.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-user-1"
+          "msg-9"
         ],
         "quotes": [
-          "implement end-to-end encryption for send messages"
+          "encrypted on‑chain storage, so messages are  stored on the blockchain in a way that only authorized participants can access add by adding two Public Address (Principal) a sender and receiver"
         ]
       },
       "acceptanceCriteria": [
-        "backend/main.mo getMessages returns messages where (m.to == caller) OR (m.from == caller).",
-        "The returned Message records still contain only encryptedPayload + keyId (encrypted symmetric key) and do not include any plaintext fields.",
-        "Frontend InboxPage shows both 'Received' and 'Sent' badges for the current user after this change (without requiring frontend workarounds like calling admin APIs)."
+        "Each stored message record includes two Principal fields representing sender and receiver (these must be persisted with the message).",
+        "No plaintext message content is stored on-chain; only encrypted bytes (ciphertext payload and encrypted symmetric key) are persisted."
       ]
     },
     {
-      "id": "REQ-3",
-      "text": "Ensure recipients can decrypt message content client-side using only their locally stored private key (device-only key), and display a clear error when decryption fails (e.g., message not intended for this recipient or missing local private key).",
+      "id": "REQ-6",
+      "text": "Add a backend API to fetch a single message by id that only returns the message if the authenticated caller Principal is either the sender Principal or the receiver Principal for that message; otherwise reject with an authorization error.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-9"
+        ],
+        "quotes": [
+          "only authorized participants can access"
+        ]
+      },
+      "acceptanceCriteria": [
+        "When caller is neither the sender nor receiver for the requested message id, the backend traps/returns an authorization error and does not reveal message data.",
+        "When caller is the sender or receiver, the backend returns the encrypted message record including sender/receiver Principals, message type, timestamp, encrypted payload, and encrypted symmetric key.",
+        "If the message id does not exist, the backend returns a clear not-found error (trap or Result-style error) without leaking other messages."
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "text": "Update the frontend message detail view to load the message via the new single-message backend API (by id) and handle authorization/not-found errors with clear English UI messaging.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-user-1"
+          "msg-9"
         ],
         "quotes": [
-          "implement end-to-end encryption for send messages"
+          "only authorized participants can access"
         ]
       },
       "acceptanceCriteria": [
-        "Opening a received message in MessageDetailPage decrypts successfully when the recipient has their transport private key available locally.",
-        "If the user lacks a local keyPair/privateKey, MessageDetailPage shows an English error state indicating the device cannot decrypt the message.",
-        "If a non-recipient attempts to decrypt a message (or ciphertext/key mismatch occurs), the UI shows an English error and does not display any plaintext."
+        "Navigating to a message detail route fetches the message by id from the backend rather than relying solely on the full inbox list already in cache.",
+        "If the backend indicates unauthorized access, the UI shows an English error message explaining the viewer is not an authorized participant for that message.",
+        "If the backend indicates not found, the UI shows an English 'Message not found' style error state and provides a way to return to the inbox."
       ]
     },
     {
-      "id": "REQ-4",
-      "text": "Clarify naming and intent of the encrypted symmetric key field end-to-end (frontend + backend types), so it is not mislabeled as a vetKey: keep compatibility where possible, but ensure code and type names/documentation clearly indicate this field is the RSA-OAEP encrypted per-message symmetric key used for E2EE decryption.",
-      "target": "both",
+      "id": "REQ-8",
+      "text": "Update user-facing labels to clearly refer to the two message participants as 'Sender' and 'Receiver' (Principals) wherever the message participants are displayed in message details.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-user-1"
+          "msg-9"
         ],
         "quotes": [
-          "implement end-to-end encryption for send messages"
+          "adding two Public Address (Principal) a sender and receiver"
         ]
       },
       "acceptanceCriteria": [
-        "Code identifiers and inline comments no longer imply that the stored per-message encrypted key is a “vetKey” (it is the encrypted symmetric key for E2EE).",
-        "Frontend and backend still interoperate after the rename/clarification (send -> store -> list -> decrypt flow works)."
+        "In the message detail UI, the participant fields are labeled 'Sender' and 'Receiver' (English) while displaying the corresponding Principal values (or profile names if available)."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in backend/main.mo (no additional backend services).",
-    "Do not edit files under frontend/src/components/ui (read-only UI component sources); compose them instead.",
-    "Do not modify immutable hook files listed in SYSTEM_CONTEXT (e.g., frontend/src/hooks/useInternetIdentity.ts(x), frontend/src/hooks/useActor.ts, frontend/src/main.tsx).",
-    "No third-party auth providers; Internet Identity only.",
-    "No external databases or non-Motoko backend code."
+    "Backend must remain a single Motoko actor in backend/main.mo.",
+    "Do not edit frontend files under frontend/src/components/ui or other paths listed as immutable in SYSTEM_CONTEXT."
   ],
   "nonGoals": [
-    "Adding real-time messaging (WebSockets or push).",
-    "Adding third-party cryptography services or server-side decryption.",
-    "Adding new message types beyond ISO 20022 and SWIFT."
+    "Implementing third-party authentication (only Internet Identity is in scope).",
+    "Adding off-chain databases or external storage providers.",
+    "Changing the client-side E2EE cryptography scheme beyond what is needed to support authorized retrieval and participant labeling."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [],
+    "goalsToRemove": [],
+    "preferencesToAdd": [],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
   }
 }

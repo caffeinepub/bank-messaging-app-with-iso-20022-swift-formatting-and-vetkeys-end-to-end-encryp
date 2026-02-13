@@ -1,14 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Add end-to-end encrypted messaging so message plaintext is generated and encrypted on the client, stored/transmitted only as ciphertext, and decrypted only on recipient devices.
+**Goal:** Store encrypted messages on-chain as ciphertext-only records tied to sender/receiver Principals, and restrict message retrieval so only those participants can access a message by id.
 
 **Planned changes:**
-- Frontend: On ComposeMessagePage, generate ISO 20022 / SWIFT plaintext locally, encrypt it with a fresh per-message AES-GCM key/IV, encrypt that AES key using the recipient’s registered RSA public key (RSA-OAEP), and call sendMessage with only encryptedPayload plus the RSA-encrypted symmetric key (no plaintext).
-- Frontend: Block sending and show a clear English error when the recipient has no registered publicKey.
-- Backend: Update getMessages to return both received and sent messages for the authenticated user (m.to == caller OR m.from == caller) while keeping message content as encrypted bytes only.
-- Frontend: Update InboxPage to display both incoming and outgoing messages (e.g., “Received” / “Sent” badges) based on the updated retrieval behavior.
-- Frontend: On MessageDetailPage, decrypt messages client-side using the user’s locally stored private key; show clear English error states when the local private key is missing or decryption fails.
-- Frontend + Backend: Rename/clarify the encrypted symmetric key field end-to-end so it is not labeled as a “vetKey”, while keeping send/store/list/decrypt interoperability intact.
+- Persist each message on-chain with two Principal fields (Sender and Receiver) alongside ciphertext payload and encrypted symmetric key; ensure no plaintext content is stored.
+- Add a backend API to fetch a single message by id with authorization checks (caller must be Sender or Receiver) and clear unauthorized/not-found errors.
+- Update the message detail view to fetch by id via the new API and show clear English UI states for unauthorized and not-found responses.
+- Update participant labels in message details to display as “Sender” and “Receiver” (Principals).
 
-**User-visible outcome:** Users can send and read messages where content is encrypted before it leaves their device, the inbox shows both sent and received messages, and the UI clearly blocks/alerts when encryption keys are missing or decryption cannot be performed.
+**User-visible outcome:** Opening a message detail page loads that message directly from the backend; only the sender/receiver can view the encrypted record, and others see an authorization error, while missing messages show a “Message not found” state with a way back to the inbox.

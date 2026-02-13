@@ -1,62 +1,40 @@
 import Map "mo:core/Map";
 import Set "mo:core/Set";
-import Time "mo:core/Time";
 import Principal "mo:core/Principal";
+import Time "mo:core/Time";
+import Blob "mo:core/Blob";
 
 module {
-  type OldMessageType = {
-    #iso20022;
-    #swift;
-  };
-
-  type OldMessage = {
-    id : Nat;
-    from : Principal.Principal;
-    to : Principal.Principal;
-    messageType : OldMessageType;
-    encryptedPayload : Blob;
-    keyId : Blob;
-    timestamp : Time.Time;
-  };
-
   type OldActor = {
-    messages : Map.Map<Nat, OldMessage>;
-    trustedContacts : Map.Map<Principal.Principal, Set.Set<Principal.Principal>>;
-    userProfiles : Map.Map<Principal.Principal, { name : Text; publicKey : ?Blob }>;
+    messages : Map.Map<Nat, EncryptedMessage>;
+    trustedContacts : Map.Map<Principal, Set.Set<Principal>>;
+    userProfiles : Map.Map<Principal, UserProfile>;
     nextMessageId : Nat;
   };
 
-  type NewMessageType = {
+  type EncryptedMessage = {
+    id : Nat;
+    from : Principal;
+    to : Principal;
+    messageType : MessageType;
+    encryptedPayload : Blob;
+    encryptedSymmetricKey : EncryptedKeyBytes;
+    timestamp : Time.Time;
+  };
+
+  type UserProfile = {
+    name : Text;
+    publicKey : ?Blob;
+  };
+
+  type MessageType = {
     #iso20022;
     #swift;
   };
 
-  type NewMessage = {
-    id : Nat;
-    from : Principal.Principal;
-    to : Principal.Principal;
-    messageType : NewMessageType;
-    encryptedPayload : Blob;
-    encryptedSymmetricKey : Blob;
-    timestamp : Time.Time;
-  };
+  type EncryptedKeyBytes = Blob;
 
-  type NewActor = {
-    messages : Map.Map<Nat, NewMessage>;
-    trustedContacts : Map.Map<Principal.Principal, Set.Set<Principal.Principal>>;
-    userProfiles : Map.Map<Principal.Principal, { name : Text; publicKey : ?Blob }>;
-    nextMessageId : Nat;
-  };
-
-  public func run(old : OldActor) : NewActor {
-    let newMessages = old.messages.map<Nat, OldMessage, NewMessage>(
-      func(_id, oldMessage) {
-        {
-          oldMessage with
-          encryptedSymmetricKey = oldMessage.keyId
-        };
-      }
-    );
-    { old with messages = newMessages };
+  public func run(old : OldActor) : OldActor {
+    old;
   };
 };

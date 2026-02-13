@@ -44,6 +44,7 @@ export interface backendInterface {
     getAllMessagesForCaller(): Promise<Array<EncryptedMessage>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    getMessageById(messageId: bigint): Promise<EncryptedMessage>;
     /**
      * / Get the relationship status between the caller and another user.
      * / This includes public key and trust relationship info.

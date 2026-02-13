@@ -127,6 +127,7 @@ export interface backendInterface {
     getAllMessagesForCaller(): Promise<Array<EncryptedMessage>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    getMessageById(messageId: bigint): Promise<EncryptedMessage>;
     /**
      * / Get the relationship status between the caller and another user.
      * / This includes public key and trust relationship info.
@@ -226,6 +227,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getCallerUserRole();
             return from_candid_UserRole_n12(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getMessageById(arg0: bigint): Promise<EncryptedMessage> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMessageById(arg0);
+                return from_candid_EncryptedMessage_n4(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMessageById(arg0);
+            return from_candid_EncryptedMessage_n4(this._uploadFile, this._downloadFile, result);
         }
     }
     async getRelationshipStatus(arg0: Principal): Promise<SyncStatus> {

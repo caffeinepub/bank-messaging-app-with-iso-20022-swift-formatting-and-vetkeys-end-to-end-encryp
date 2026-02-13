@@ -1,34 +1,26 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Project now includes implementing end-to-end encryption (E2EE) for sent messages to ensure only intended recipients can decrypt message content.",
+  "summary": "Encrypted messaging app planning: end-to-end encrypted messaging with optional encrypted on-chain storage restricted to sender/receiver principals.",
   "architectural_notes": [
-    "Add end-to-end encryption (E2EE) to the messaging flow so messages are encrypted on the sender device and decrypted only by intended recipients."
+    "If implementing on-chain message storage, store only encrypted ciphertext and restrict read access by sender/receiver principals (public addresses)."
   ],
   "known_issues": [],
   "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-ensure-outgoing-messages-are-end-to-end-encrypted-on-the-client-before-calling-the-backend-sendmessage-api-generate-the-iso-20022-swift-raw-plaintext-locally-encrypt-it-using-a-per-message-aes-gcm-key-encrypt-that-aes-key-with-the-recipient-s-registered-rsa-public-key-rsa-oaep-and-only-send-ciphertext-encrypted-aes-key-to-the-backend-never-plaintext",
-      "title": "Ensure outgoing messages are end-to-end encrypted on the client before calling the backend sendMessage API: generate the ISO 20022 / SWIFT raw plaintext locally, encrypt it using a per-message AES-GCM key, encrypt that AES key with the recipient’s registered RSA public key (RSA-OAEP), and only send ciphertext + encrypted AES key to the backend (never plaintext).",
+      "id": "feature-update-the-frontend-message-detail-view-to-load-the-message-via-the-new-single-message-backend-api-by-id-and-handle-authorization-not-found-errors-with-clear-english-ui-messaging",
+      "title": "Update the frontend message detail view to load the message via the new single-message backend API (by id) and handle authorization/not-found errors with clear English UI messaging.",
       "reqIds": [
-        "REQ-1"
+        "REQ-7"
       ],
       "version": 1
     },
     {
-      "id": "feature-ensure-recipients-can-decrypt-message-content-client-side-using-only-their-locally-stored-private-key-device-only-key-and-display-a-clear-error-when-decryption-fails-e-g-message-not-intended-for-this-recipient-or-missing-local-private-key",
-      "title": "Ensure recipients can decrypt message content client-side using only their locally stored private key (device-only key), and display a clear error when decryption fails (e.g., message not intended for this recipient or missing local private key).",
+      "id": "feature-update-user-facing-labels-to-clearly-refer-to-the-two-message-participants-as-sender-and-receiver-principals-wherever-the-message-participants-are-displayed-in-message-details",
+      "title": "Update user-facing labels to clearly refer to the two message participants as 'Sender' and 'Receiver' (Principals) wherever the message participants are displayed in message details.",
       "reqIds": [
-        "REQ-3"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-clarify-naming-and-intent-of-the-encrypted-symmetric-key-field-end-to-end-frontend-backend-types-so-it-is-not-mislabeled-as-a-vetkey-keep-compatibility-where-possible-but-ensure-code-and-type-names-documentation-clearly-indicate-this-field-is-the-rsa-oaep-encrypted-per-message-symmetric-key-used-for-e2ee-decryption",
-      "title": "Clarify naming and intent of the encrypted symmetric key field end-to-end (frontend + backend types), so it is not mislabeled as a vetKey: keep compatibility where possible, but ensure code and type names/documentation clearly indicate this field is the RSA-OAEP encrypted per-message symmetric key used for E2EE decryption.",
-      "reqIds": [
-        "REQ-4"
+        "REQ-8"
       ],
       "version": 1
     }
@@ -36,20 +28,28 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Implement end-to-end encryption for sending messages (encrypt on device; only recipient can decrypt)",
+      "summary": "Implement encrypted on-chain message storage with access restricted to sender and receiver public addresses (principals).",
       "reqIds": [],
       "status": "pending"
     },
     {
-      "id": "AR-3",
-      "summary": "Make message retrieval consistent with end-to-end encrypted messaging by returning both received and sent messages for the authenticated user (so the inbox can show both directions), while keeping message content stored and transported only as encrypted bytes.",
+      "id": "AR-2",
+      "summary": "Ensure encrypted message records are stored on-chain as ciphertext only, and each stored message includes both participant public addresses as Principals (sender and receiver) so that authorization can be enforced using those two Principals.",
       "reqIds": [
-        "REQ-2"
+        "REQ-5"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Add a backend API to fetch a single message by id that only returns the message if the authenticated caller Principal is either the sender Principal or the receiver Principal for that message; otherwise reject with an authorization error.",
+      "reqIds": [
+        "REQ-6"
       ],
       "status": "pending"
     }
   ],
-  "projectName": "Implement end-to-end encryption for sending messages",
+  "projectName": "Encrypted on-chain message storage restricted to sender/receiver principals",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

@@ -7,19 +7,12 @@ import Blob "mo:core/Blob";
 import Time "mo:core/Time";
 import Principal "mo:core/Principal";
 import Migration "migration";
+
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
-// Apply data migration on upgrades (also required for value changes)
 (with migration = Migration.run)
 actor {
-  type MessageType = {
-    #iso20022;
-    #swift;
-  };
-
-  type EncryptedKeyBytes = Blob;
-
   type EncryptedMessage = {
     id : Nat;
     from : Principal;
@@ -36,7 +29,14 @@ actor {
     };
   };
 
-  type MessageState = {
+  type MessageType = {
+    #iso20022;
+    #swift;
+  };
+
+  type EncryptedKeyBytes = Blob;
+
+  type EncryptedMessagingState = {
     messages : Map.Map<Nat, EncryptedMessage>;
     trustedContacts : Map.Map<Principal, Set.Set<Principal>>;
     userProfiles : Map.Map<Principal, UserProfile>;
@@ -235,6 +235,20 @@ actor {
         m.from == caller or m.to == caller;
       }
     );
+  };
+
+  // Fetch a single message by id for authorized caller.
+  public query ({ caller }) func getMessageById(messageId : Nat) : async EncryptedMessage {
+    let message = switch (messages.get(messageId)) {
+      case (null) { Runtime.trap("Message not found") };
+      case (?m) { m };
+    };
+
+    if (caller != message.from and caller != message.to) {
+      Runtime.trap("Access denied: Not authorized to fetch this message");
+    };
+
+    message;
   };
 
   // Get all trusted contacts for caller

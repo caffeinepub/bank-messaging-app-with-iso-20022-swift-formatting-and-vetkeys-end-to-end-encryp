@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
-import { useGetMessages } from '@/hooks/useQueries';
+import { useGetMessageById } from '@/hooks/useQueries';
 import { useGetUserProfile } from '@/hooks/useProfiles';
 import { useInternetIdentity } from '@/hooks/useInternetIdentity';
 import { useTransportKey } from '@/hooks/useTransportKey';
@@ -20,13 +20,15 @@ export default function MessageDetailPage() {
   const { messageId } = useParams({ from: '/message/$messageId' });
   const navigate = useNavigate();
   const { identity } = useInternetIdentity();
-  const { data: messages = [] } = useGetMessages();
   const { keyPair } = useTransportKey();
   const [decryptedContent, setDecryptedContent] = useState<string | null>(null);
   const [decryptError, setDecryptError] = useState<string | null>(null);
   const [isDecrypting, setIsDecrypting] = useState(false);
 
-  const message = messages.find((m) => m.id.toString() === messageId);
+  // Convert messageId to BigInt for backend query
+  const messageIdBigInt = messageId ? BigInt(messageId) : null;
+  const { data: message, error: messageError, isLoading: messageLoading } = useGetMessageById(messageIdBigInt);
+
   const { data: senderProfile } = useGetUserProfile(message?.from || null);
   const { data: recipientProfile } = useGetUserProfile(message?.to || null);
 
@@ -57,6 +59,45 @@ export default function MessageDetailPage() {
     }
   }, [message, keyPair, decryptedContent, decryptError, isDecrypting, isReceived]);
 
+  // Handle loading state
+  if (messageLoading) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>Loading message...</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // Handle authorization error
+  if (messageError) {
+    const errorMsg = messageError instanceof Error ? messageError.message : String(messageError);
+    const isUnauthorized = errorMsg.includes('Access denied') || errorMsg.includes('Not authorized');
+    const isNotFound = errorMsg.includes('not found') || errorMsg.includes('Message not found');
+
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {isUnauthorized
+              ? 'You are not an authorized participant for this message. Only the sender and receiver can access this message.'
+              : isNotFound
+              ? 'Message not found. This message may have been deleted or the ID is incorrect.'
+              : 'An error occurred while loading the message.'}
+          </AlertDescription>
+        </Alert>
+        <Button variant="outline" onClick={() => navigate({ to: '/inbox' })}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Inbox
+        </Button>
+      </div>
+    );
+  }
+
+  // Handle message not found (shouldn't happen with error handling above, but defensive)
   if (!message) {
     return (
       <div className="max-w-4xl mx-auto space-y-6">
@@ -115,13 +156,13 @@ export default function MessageDetailPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">From</p>
+              <p className="text-sm font-medium text-muted-foreground">Sender</p>
               <p className="text-sm font-mono">
                 {senderProfile?.name || message.from.toString()}
               </p>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">To</p>
+              <p className="text-sm font-medium text-muted-foreground">Receiver</p>
               <p className="text-sm font-mono">
                 {recipientProfile?.name || message.to.toString()}
               </p>

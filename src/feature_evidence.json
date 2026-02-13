@@ -2,31 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-ensure-outgoing-messages-are-end-to-end-encrypted-on-the-client-before-calling-the-backend-sendmessage-api-generate-the-iso-20022-swift-raw-plaintext-locally-encrypt-it-using-a-per-message-aes-gcm-key-encrypt-that-aes-key-with-the-recipient-s-registered-rsa-public-key-rsa-oaep-and-only-send-ciphertext-encrypted-aes-key-to-the-backend-never-plaintext",
-      "featureTitle": "Ensure outgoing messages are end-to-end encrypted on the client before calling the backend sendMessage API: generate the ISO 20022 / SWIFT raw plaintext locally, encrypt it using a per-message AES-GCM key, encrypt that AES key with the recipient’s registered RSA public key (RSA-OAEP), and only send ciphertext + encrypted AES key to the backend (never plaintext).",
+      "featureId": "feature-update-the-frontend-message-detail-view-to-load-the-message-via-the-new-single-message-backend-api-by-id-and-handle-authorization-not-found-errors-with-clear-english-ui-messaging",
+      "featureTitle": "Update the frontend message detail view to load the message via the new single-message backend API (by id) and handle authorization/not-found errors with clear English UI messaging.",
       "files": [
         "frontend/src/hooks/useQueries.ts",
-        "frontend/src/lib/crypto/e2ee.ts",
-        "frontend/src/pages/ComposeMessagePage.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-1"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-ensure-recipients-can-decrypt-message-content-client-side-using-only-their-locally-stored-private-key-device-only-key-and-display-a-clear-error-when-decryption-fails-e-g-message-not-intended-for-this-recipient-or-missing-local-private-key",
-      "featureTitle": "Ensure recipients can decrypt message content client-side using only their locally stored private key (device-only key), and display a clear error when decryption fails (e.g., message not intended for this recipient or missing local private key).",
-      "files": [
-        "frontend/src/lib/crypto/e2ee.ts",
         "frontend/src/pages/MessageDetailPage.tsx"
       ],
       "components": [
@@ -38,17 +17,14 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-3"
+        "REQ-7"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-clarify-naming-and-intent-of-the-encrypted-symmetric-key-field-end-to-end-frontend-backend-types-so-it-is-not-mislabeled-as-a-vetkey-keep-compatibility-where-possible-but-ensure-code-and-type-names-documentation-clearly-indicate-this-field-is-the-rsa-oaep-encrypted-per-message-symmetric-key-used-for-e2ee-decryption",
-      "featureTitle": "Clarify naming and intent of the encrypted symmetric key field end-to-end (frontend + backend types), so it is not mislabeled as a vetKey: keep compatibility where possible, but ensure code and type names/documentation clearly indicate this field is the RSA-OAEP encrypted per-message symmetric key used for E2EE decryption.",
+      "featureId": "feature-update-user-facing-labels-to-clearly-refer-to-the-two-message-participants-as-sender-and-receiver-principals-wherever-the-message-participants-are-displayed-in-message-details",
+      "featureTitle": "Update user-facing labels to clearly refer to the two message participants as 'Sender' and 'Receiver' (Principals) wherever the message participants are displayed in message details.",
       "files": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/ComposeMessagePage.tsx",
-        "frontend/src/pages/InboxPage.tsx",
         "frontend/src/pages/MessageDetailPage.tsx"
       ],
       "components": [
@@ -60,7 +36,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-4"
+        "REQ-8"
       ],
       "confidence": "high"
     }
