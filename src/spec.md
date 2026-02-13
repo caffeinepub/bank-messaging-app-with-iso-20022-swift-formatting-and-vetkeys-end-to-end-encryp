@@ -1,11 +1,14 @@
 # Specification
 
 ## Summary
-**Goal:** Add distinct, human-friendly glyph symbols for ckBTC, ckETH, and ckUSDC and show them consistently across the dashboard and send/receive UI.
+**Goal:** Add end-to-end encrypted messaging so message plaintext is generated and encrypted on the client, stored/transmitted only as ciphertext, and decrypted only on recipient devices.
 
 **Planned changes:**
-- Extend `frontend/src/config/tokens.ts` to include a per-token glyph for ckBTC, ckETH, and ckUSDC, plus a simple helper/accessor to retrieve it by token key.
-- Update `frontend/src/components/dashboard/TokensSection.tsx` to display the configured glyph alongside the token ticker for each token.
-- Update `frontend/src/components/dashboard/TokenReceivePanel.tsx` and `frontend/src/components/dashboard/TokenSendPanel.tsx` to include the configured glyph anywhere the token symbol is presented (headings, primary action button text, and success messages), without changing existing validation/disabled behavior.
+- Frontend: On ComposeMessagePage, generate ISO 20022 / SWIFT plaintext locally, encrypt it with a fresh per-message AES-GCM key/IV, encrypt that AES key using the recipient’s registered RSA public key (RSA-OAEP), and call sendMessage with only encryptedPayload plus the RSA-encrypted symmetric key (no plaintext).
+- Frontend: Block sending and show a clear English error when the recipient has no registered publicKey.
+- Backend: Update getMessages to return both received and sent messages for the authenticated user (m.to == caller OR m.from == caller) while keeping message content as encrypted bytes only.
+- Frontend: Update InboxPage to display both incoming and outgoing messages (e.g., “Received” / “Sent” badges) based on the updated retrieval behavior.
+- Frontend: On MessageDetailPage, decrypt messages client-side using the user’s locally stored private key; show clear English error states when the local private key is missing or decryption fails.
+- Frontend + Backend: Rename/clarify the encrypted symmetric key field end-to-end so it is not labeled as a “vetKey”, while keeping send/store/list/decrypt interoperability intact.
 
-**User-visible outcome:** Users see recognizable glyphs (e.g., ₿/Ξ/$ or similar) next to ckBTC/ckETH/ckUSDC in the dashboard tokens list and throughout the send/receive panels for clearer at-a-glance token identification.
+**User-visible outcome:** Users can send and read messages where content is encrypted before it leaves their device, the inbox shows both sent and received messages, and the UI clearly blocks/alerts when encryption keys are missing or decryption cannot be performed.

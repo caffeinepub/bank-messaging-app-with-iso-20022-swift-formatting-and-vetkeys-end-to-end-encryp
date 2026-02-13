@@ -13,11 +13,12 @@ function MessageRow({ message }: { message: any }) {
   const navigate = useNavigate();
   const { identity } = useInternetIdentity();
   const { data: senderProfile } = useGetUserProfile(message.from);
+  const { data: recipientProfile } = useGetUserProfile(message.to);
   
   const currentPrincipal = identity?.getPrincipal().toString();
   const isReceived = message.to.toString() === currentPrincipal;
   const otherParty = isReceived ? message.from : message.to;
-  const otherProfile = senderProfile;
+  const otherProfile = isReceived ? senderProfile : recipientProfile;
 
   const formatDate = (timestamp: bigint) => {
     const date = new Date(Number(timestamp) / 1000000);

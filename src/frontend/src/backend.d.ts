@@ -7,15 +7,16 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
+export type EncryptedKeyBytes = Uint8Array;
 export type Time = bigint;
-export interface Message {
+export interface EncryptedMessage {
     id: bigint;
     to: Principal;
     from: Principal;
     messageType: MessageType;
     timestamp: Time;
     encryptedPayload: Uint8Array;
-    keyId: VetKeyBytes;
+    encryptedSymmetricKey: EncryptedKeyBytes;
 }
 export interface SyncStatus {
     otherHasPublicKey: boolean;
@@ -24,7 +25,6 @@ export interface SyncStatus {
     callerTrustsOther: boolean;
     otherTrustsCaller: boolean;
 }
-export type VetKeyBytes = Uint8Array;
 export interface UserProfile {
     publicKey?: Uint8Array;
     name: string;
@@ -41,20 +41,20 @@ export enum UserRole {
 export interface backendInterface {
     addTrustedContact(user: Principal): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    getAllMessagesForCaller(): Promise<Array<EncryptedMessage>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
-    getMessages(): Promise<Array<Message>>;
     /**
-     * / Get the relationship status between the caller and ANY other user.
+     * / Get the relationship status between the caller and another user.
      * / This includes public key and trust relationship info.
+     * / Only reveals information about the relationship between caller and the specified user.
      */
     getRelationshipStatus(other: Principal): Promise<SyncStatus>;
     getTrustedContacts(): Promise<Array<Principal>>;
-    getUserMessages(user: Principal): Promise<Array<Message>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     isTrustedContact(user: Principal): Promise<boolean>;
     removeTrustedContact(user: Principal): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    sendMessage(to: Principal, messageType: MessageType, encryptedPayload: Uint8Array, keyId: VetKeyBytes): Promise<bigint>;
+    sendMessage(to: Principal, messageType: MessageType, encryptedPayload: Uint8Array, encryptedSymmetricKey: EncryptedKeyBytes): Promise<bigint>;
 }

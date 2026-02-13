@@ -2,10 +2,12 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-extend-the-token-configuration-to-include-a-distinct-human-friendly-token-symbol-glyph-for-ckbtc-cketh-and-ckusdc-e-g-or-other-clearly-recognizable-glyphs-and-expose-a-helper-to-retrieve-it-by-token-key",
-      "featureTitle": "Extend the token configuration to include a distinct human-friendly token symbol glyph for ckBTC, ckETH, and ckUSDC (e.g., ₿, Ξ, $, or other clearly recognizable glyphs) and expose a helper to retrieve it by token key.",
+      "featureId": "feature-ensure-outgoing-messages-are-end-to-end-encrypted-on-the-client-before-calling-the-backend-sendmessage-api-generate-the-iso-20022-swift-raw-plaintext-locally-encrypt-it-using-a-per-message-aes-gcm-key-encrypt-that-aes-key-with-the-recipient-s-registered-rsa-public-key-rsa-oaep-and-only-send-ciphertext-encrypted-aes-key-to-the-backend-never-plaintext",
+      "featureTitle": "Ensure outgoing messages are end-to-end encrypted on the client before calling the backend sendMessage API: generate the ISO 20022 / SWIFT raw plaintext locally, encrypt it using a per-message AES-GCM key, encrypt that AES key with the recipient’s registered RSA public key (RSA-OAEP), and only send ciphertext + encrypted AES key to the backend (never plaintext).",
       "files": [
-        "frontend/src/config/tokens.ts"
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/lib/crypto/e2ee.ts",
+        "frontend/src/pages/ComposeMessagePage.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -21,30 +23,11 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-display-the-token-symbol-glyphs-for-ckbtc-cketh-and-ckusdc-in-the-dashboard-tokens-section-so-users-can-visually-distinguish-tokens-at-a-glance",
-      "featureTitle": "Display the token symbol glyphs for ckBTC, ckETH, and ckUSDC in the Dashboard Tokens section so users can visually distinguish tokens at a glance.",
+      "featureId": "feature-ensure-recipients-can-decrypt-message-content-client-side-using-only-their-locally-stored-private-key-device-only-key-and-display-a-clear-error-when-decryption-fails-e-g-message-not-intended-for-this-recipient-or-missing-local-private-key",
+      "featureTitle": "Ensure recipients can decrypt message content client-side using only their locally stored private key (device-only key), and display a clear error when decryption fails (e.g., message not intended for this recipient or missing local private key).",
       "files": [
-        "frontend/src/components/dashboard/TokensSection.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-2"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-use-the-configured-token-symbol-glyph-consistently-anywhere-the-token-symbol-is-presented-in-the-send-receive-panels-headings-button-text-and-success-messages-while-keeping-user-facing-text-in-english",
-      "featureTitle": "Use the configured token symbol glyph consistently anywhere the token symbol is presented in the send/receive panels (headings, button text, and success messages), while keeping user-facing text in English.",
-      "files": [
-        "frontend/src/components/dashboard/TokenReceivePanel.tsx",
-        "frontend/src/components/dashboard/TokenSendPanel.tsx"
+        "frontend/src/lib/crypto/e2ee.ts",
+        "frontend/src/pages/MessageDetailPage.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -56,6 +39,28 @@
       ],
       "testIds": [
         "REQ-3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-clarify-naming-and-intent-of-the-encrypted-symmetric-key-field-end-to-end-frontend-backend-types-so-it-is-not-mislabeled-as-a-vetkey-keep-compatibility-where-possible-but-ensure-code-and-type-names-documentation-clearly-indicate-this-field-is-the-rsa-oaep-encrypted-per-message-symmetric-key-used-for-e2ee-decryption",
+      "featureTitle": "Clarify naming and intent of the encrypted symmetric key field end-to-end (frontend + backend types), so it is not mislabeled as a vetKey: keep compatibility where possible, but ensure code and type names/documentation clearly indicate this field is the RSA-OAEP encrypted per-message symmetric key used for E2EE decryption.",
+      "files": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/ComposeMessagePage.tsx",
+        "frontend/src/pages/InboxPage.tsx",
+        "frontend/src/pages/MessageDetailPage.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-4"
       ],
       "confidence": "high"
     }

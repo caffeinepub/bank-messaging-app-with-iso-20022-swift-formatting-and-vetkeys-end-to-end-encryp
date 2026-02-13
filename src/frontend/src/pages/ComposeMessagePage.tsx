@@ -32,7 +32,7 @@ export default function ComposeMessagePage() {
   const [iso20022Data, setIso20022Data] = useState<Iso20022Message>(createEmptyIso20022Message());
   const [swiftData, setSwiftData] = useState<SwiftMessage>(createEmptySwiftMessage());
   
-  // Get vetKey from URL or session
+  // Get vetKey from URL or session (used for transport key persistence)
   const [vetKeyFromUrl, setVetKeyFromUrl] = useState<string | null>(null);
   
   useEffect(() => {
@@ -63,7 +63,7 @@ export default function ComposeMessagePage() {
     if (!syncStatus.callerHasPublicKey) {
       return {
         type: 'error' as const,
-        message: 'Your transport key is not available on this device/tab. Go to Dashboard and generate or rotate your key.',
+        message: 'Your transport key is not registered. Go to Dashboard and generate or rotate your key.',
       };
     }
 
@@ -112,22 +112,25 @@ export default function ComposeMessagePage() {
     }
 
     if (!recipientProfile?.publicKey) {
-      toast.error('Recipient public key not available');
+      toast.error('Recipient public key not available. Cannot encrypt message.');
       return;
     }
 
     if (!keyPair) {
-      toast.error('Your transport key is not available');
+      toast.error('Your transport key is not available on this device');
       return;
     }
 
     try {
+      // Generate plaintext message locally
       const plaintext =
         messageType === 'iso20022'
           ? generateIso20022Raw(iso20022Data)
           : generateSwiftRaw(swiftData);
 
-      const { encryptedPayload, keyId } = await encryptPayload(
+      // Encrypt using E2EE: AES-GCM for payload, RSA-OAEP for key wrapping
+      // The encryptedSymmetricKey is the per-message AES key wrapped with recipient's public key
+      const { encryptedPayload, encryptedSymmetricKey } = await encryptPayload(
         plaintext,
         recipientProfile.publicKey
       );
@@ -135,14 +138,15 @@ export default function ComposeMessagePage() {
       const recipient = Principal.fromText(selectedRecipient);
       const msgType = messageType === 'iso20022' ? MessageType.iso20022 : MessageType.swift;
 
+      // Send only encrypted data to backend - no plaintext transmitted
       await sendMessage.mutateAsync({
         to: recipient,
         messageType: msgType,
         encryptedPayload,
-        keyId,
+        encryptedSymmetricKey,
       });
 
-      toast.success('Message sent successfully');
+      toast.success('Encrypted message sent successfully');
       navigate({ to: '/inbox' });
     } catch (error: unknown) {
       console.error('Failed to send message:', error);

@@ -1,32 +1,34 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "New project",
-  "architectural_notes": [],
+  "summary": "Project now includes implementing end-to-end encryption (E2EE) for sent messages to ensure only intended recipients can decrypt message content.",
+  "architectural_notes": [
+    "Add end-to-end encryption (E2EE) to the messaging flow so messages are encrypted on the sender device and decrypted only by intended recipients."
+  ],
   "known_issues": [],
   "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-extend-the-token-configuration-to-include-a-distinct-human-friendly-token-symbol-glyph-for-ckbtc-cketh-and-ckusdc-e-g-or-other-clearly-recognizable-glyphs-and-expose-a-helper-to-retrieve-it-by-token-key",
-      "title": "Extend the token configuration to include a distinct human-friendly token symbol glyph for ckBTC, ckETH, and ckUSDC (e.g., ₿, Ξ, $, or other clearly recognizable glyphs) and expose a helper to retrieve it by token key.",
+      "id": "feature-ensure-outgoing-messages-are-end-to-end-encrypted-on-the-client-before-calling-the-backend-sendmessage-api-generate-the-iso-20022-swift-raw-plaintext-locally-encrypt-it-using-a-per-message-aes-gcm-key-encrypt-that-aes-key-with-the-recipient-s-registered-rsa-public-key-rsa-oaep-and-only-send-ciphertext-encrypted-aes-key-to-the-backend-never-plaintext",
+      "title": "Ensure outgoing messages are end-to-end encrypted on the client before calling the backend sendMessage API: generate the ISO 20022 / SWIFT raw plaintext locally, encrypt it using a per-message AES-GCM key, encrypt that AES key with the recipient’s registered RSA public key (RSA-OAEP), and only send ciphertext + encrypted AES key to the backend (never plaintext).",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-display-the-token-symbol-glyphs-for-ckbtc-cketh-and-ckusdc-in-the-dashboard-tokens-section-so-users-can-visually-distinguish-tokens-at-a-glance",
-      "title": "Display the token symbol glyphs for ckBTC, ckETH, and ckUSDC in the Dashboard Tokens section so users can visually distinguish tokens at a glance.",
+      "id": "feature-ensure-recipients-can-decrypt-message-content-client-side-using-only-their-locally-stored-private-key-device-only-key-and-display-a-clear-error-when-decryption-fails-e-g-message-not-intended-for-this-recipient-or-missing-local-private-key",
+      "title": "Ensure recipients can decrypt message content client-side using only their locally stored private key (device-only key), and display a clear error when decryption fails (e.g., message not intended for this recipient or missing local private key).",
       "reqIds": [
-        "REQ-2"
+        "REQ-3"
       ],
       "version": 1
     },
     {
-      "id": "feature-use-the-configured-token-symbol-glyph-consistently-anywhere-the-token-symbol-is-presented-in-the-send-receive-panels-headings-button-text-and-success-messages-while-keeping-user-facing-text-in-english",
-      "title": "Use the configured token symbol glyph consistently anywhere the token symbol is presented in the send/receive panels (headings, button text, and success messages), while keeping user-facing text in English.",
+      "id": "feature-clarify-naming-and-intent-of-the-encrypted-symmetric-key-field-end-to-end-frontend-backend-types-so-it-is-not-mislabeled-as-a-vetkey-keep-compatibility-where-possible-but-ensure-code-and-type-names-documentation-clearly-indicate-this-field-is-the-rsa-oaep-encrypted-per-message-symmetric-key-used-for-e2ee-decryption",
+      "title": "Clarify naming and intent of the encrypted symmetric key field end-to-end (frontend + backend types), so it is not mislabeled as a vetKey: keep compatibility where possible, but ensure code and type names/documentation clearly indicate this field is the RSA-OAEP encrypted per-message symmetric key used for E2EE decryption.",
       "reqIds": [
-        "REQ-3"
+        "REQ-4"
       ],
       "version": 1
     }
@@ -34,12 +36,20 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Add token symbols for ckBTC, ckETH, and ckUSDC",
+      "summary": "Implement end-to-end encryption for sending messages (encrypt on device; only recipient can decrypt)",
       "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Make message retrieval consistent with end-to-end encrypted messaging by returning both received and sent messages for the authenticated user (so the inbox can show both directions), while keeping message content stored and transported only as encrypted bytes.",
+      "reqIds": [
+        "REQ-2"
+      ],
       "status": "pending"
     }
   ],
-  "projectName": "Add ckBTC, ckETH, and ckUSDC token symbols to the UI",
+  "projectName": "Implement end-to-end encryption for sending messages",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

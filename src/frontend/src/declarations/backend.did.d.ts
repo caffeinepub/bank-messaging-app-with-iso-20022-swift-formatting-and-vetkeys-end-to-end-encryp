@@ -10,14 +10,15 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface Message {
+export type EncryptedKeyBytes = Uint8Array;
+export interface EncryptedMessage {
   'id' : bigint,
   'to' : Principal,
   'from' : Principal,
   'messageType' : MessageType,
   'timestamp' : Time,
   'encryptedPayload' : Uint8Array,
-  'keyId' : VetKeyBytes,
+  'encryptedSymmetricKey' : EncryptedKeyBytes,
 }
 export type MessageType = { 'iso20022' : null } |
   { 'swift' : null };
@@ -36,28 +37,27 @@ export interface UserProfile {
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
-export type VetKeyBytes = Uint8Array;
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addTrustedContact' : ActorMethod<[Principal], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'getAllMessagesForCaller' : ActorMethod<[], Array<EncryptedMessage>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getMessages' : ActorMethod<[], Array<Message>>,
   /**
-   * / Get the relationship status between the caller and ANY other user.
+   * / Get the relationship status between the caller and another user.
    * / This includes public key and trust relationship info.
+   * / Only reveals information about the relationship between caller and the specified user.
    */
   'getRelationshipStatus' : ActorMethod<[Principal], SyncStatus>,
   'getTrustedContacts' : ActorMethod<[], Array<Principal>>,
-  'getUserMessages' : ActorMethod<[Principal], Array<Message>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isTrustedContact' : ActorMethod<[Principal], boolean>,
   'removeTrustedContact' : ActorMethod<[Principal], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'sendMessage' : ActorMethod<
-    [Principal, MessageType, Uint8Array, VetKeyBytes],
+    [Principal, MessageType, Uint8Array, EncryptedKeyBytes],
     bigint
   >,
 }

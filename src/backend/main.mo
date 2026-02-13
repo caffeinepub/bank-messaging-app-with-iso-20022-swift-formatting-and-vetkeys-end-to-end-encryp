@@ -6,9 +6,12 @@ import Array "mo:core/Array";
 import Blob "mo:core/Blob";
 import Time "mo:core/Time";
 import Principal "mo:core/Principal";
+import Migration "migration";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
+// Apply data migration on upgrades (also required for value changes)
+(with migration = Migration.run)
 actor {
   type MessageType = {
     #iso20022;
@@ -16,45 +19,43 @@ actor {
   };
 
   type EncryptedKeyBytes = Blob;
-  type VetKeyBytes = Blob;
 
-  type Message = {
+  type EncryptedMessage = {
     id : Nat;
     from : Principal;
     to : Principal;
     messageType : MessageType;
     encryptedPayload : Blob;
-    keyId : VetKeyBytes;
+    encryptedSymmetricKey : EncryptedKeyBytes;
     timestamp : Time.Time;
   };
 
-  module Message {
-    public func compare(message1 : Message, message2 : Message) : Order.Order {
+  module EncryptedMessage {
+    public func compare(message1 : EncryptedMessage, message2 : EncryptedMessage) : Order.Order {
       Nat.compare(message1.id, message2.id);
     };
   };
 
   type MessageState = {
-    messages : Map.Map<Nat, Message>;
+    messages : Map.Map<Nat, EncryptedMessage>;
     trustedContacts : Map.Map<Principal, Set.Set<Principal>>;
     userProfiles : Map.Map<Principal, UserProfile>;
     nextMessageId : Nat;
   };
 
-  let messages = Map.empty<Nat, Message>();
+  let messages = Map.empty<Nat, EncryptedMessage>();
   var nextMessageId = 0;
 
   let trustedContacts = Map.empty<Principal, Set.Set<Principal>>();
 
-  let accessControlState = AccessControl.initState();
-  include MixinAuthorization(accessControlState);
-
-  public type UserProfile = {
+  type UserProfile = {
     name : Text;
     publicKey : ?Blob;
   };
 
   let userProfiles = Map.empty<Principal, UserProfile>();
+  let accessControlState = AccessControl.initState();
+  include MixinAuthorization(accessControlState);
 
   public type ContactRequest = {
     fromUser : Principal;
@@ -81,6 +82,10 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view profiles");
     };
+    // Users can only view their own profile unless they are admin
+    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Can only view your own profile");
+    };
     userProfiles.get(user);
   };
 
@@ -96,7 +101,7 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can add trusted contacts");
     };
-    
+
     if (caller == user) {
       Runtime.trap("Cannot add yourself as a trusted contact");
     };
@@ -118,15 +123,16 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can check trusted contacts");
     };
-    
+
     switch (trustedContacts.get(caller)) {
       case (null) { false };
       case (?contacts) { contacts.contains(user) };
     };
   };
 
-  /// Get the relationship status between the caller and ANY other user.
+  /// Get the relationship status between the caller and another user.
   /// This includes public key and trust relationship info.
+  /// Only reveals information about the relationship between caller and the specified user.
   public query ({ caller }) func getRelationshipStatus(other : Principal) : async SyncStatus {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can query relationship status");
@@ -169,7 +175,7 @@ actor {
   };
 
   // Helper function to check mutual trust
-  private func areMutuallyTrusted(user1 : Principal, user2 : Principal) : Bool {
+  func areMutuallyTrusted(user1 : Principal, user2 : Principal) : Bool {
     let user1TrustsUser2 = switch (trustedContacts.get(user1)) {
       case (null) { false };
       case (?contacts) { contacts.contains(user2) };
@@ -188,7 +194,7 @@ actor {
     to : Principal,
     messageType : MessageType,
     encryptedPayload : Blob,
-    keyId : VetKeyBytes,
+    encryptedSymmetricKey : EncryptedKeyBytes,
   ) : async Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can send messages");
@@ -203,13 +209,13 @@ actor {
       Runtime.trap("Unauthorized: Both users must have each other as trusted contacts");
     };
 
-    let message : Message = {
+    let message : EncryptedMessage = {
       id = nextMessageId;
       from = caller;
       to;
       messageType;
       encryptedPayload;
-      keyId;
+      encryptedSymmetricKey;
       timestamp = Time.now();
     };
 
@@ -218,28 +224,15 @@ actor {
     message.id;
   };
 
-  // Retrieve messages for user
-  public query ({ caller }) func getMessages() : async [Message] {
+  // Get all messages (received and sent) for the caller
+  public query ({ caller }) func getAllMessagesForCaller() : async [EncryptedMessage] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can retrieve messages");
     };
-    
-    messages.values().toArray().filter(
-      func(m) {
-        m.to == caller;
-      }
-    );
-  };
 
-  // Get user messages by principal (admin only)
-  public query ({ caller }) func getUserMessages(user : Principal) : async [Message] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can fetch other users' messages");
-    };
-    
     messages.values().toArray().filter(
       func(m) {
-        m.from == user or m.to == user;
+        m.from == caller or m.to == caller;
       }
     );
   };
@@ -249,7 +242,7 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view trusted contacts");
     };
-    
+
     switch (trustedContacts.get(caller)) {
       case (null) { [] };
       case (?contacts) { contacts.toArray() };
@@ -261,7 +254,7 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can remove trusted contacts");
     };
-    
+
     switch (trustedContacts.get(caller)) {
       case (null) { /* No contacts to remove */ };
       case (?contacts) {

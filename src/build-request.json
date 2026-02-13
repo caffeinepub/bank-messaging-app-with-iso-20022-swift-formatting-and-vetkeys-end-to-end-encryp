@@ -1,71 +1,91 @@
 {
   "kind": "build_request",
-  "title": "Add ckBTC, ckETH, and ckUSDC token symbols to the UI",
+  "title": "Implement end-to-end encryption for sending messages",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Extend the token configuration to include a distinct human-friendly token symbol glyph for ckBTC, ckETH, and ckUSDC (e.g., ₿, Ξ, $, or other clearly recognizable glyphs) and expose a helper to retrieve it by token key.",
+      "text": "Ensure outgoing messages are end-to-end encrypted on the client before calling the backend sendMessage API: generate the ISO 20022 / SWIFT raw plaintext locally, encrypt it using a per-message AES-GCM key, encrypt that AES key with the recipient’s registered RSA public key (RSA-OAEP), and only send ciphertext + encrypted AES key to the backend (never plaintext).",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "recent-messages"
+          "msg-user-1"
         ],
         "quotes": [
-          "are you able to add  ck BTC ck ETH ck USDC  token symbols"
+          "implement end-to-end encryption for send messages"
         ]
       },
       "acceptanceCriteria": [
-        "`frontend/src/config/tokens.ts` includes a new field on token configs (or a dedicated mapping) that provides a symbol glyph for ckBTC, ckETH, and ckUSDC.",
-        "There is a simple accessor (e.g., via `getTokenConfig` or a new helper) that the UI can use to fetch the glyph for a given token key.",
-        "Existing token configuration checks and existing properties (name, symbol, ledgerCanisterId, decimals) continue to work without regressions."
+        "When sending a message from ComposeMessagePage, the backend sendMessage call is made with encryptedPayload and keyId/encrypted key bytes only (no plaintext is sent).",
+        "If the recipient does not have a publicKey registered, the UI blocks sending and shows a clear error in English.",
+        "Encryption uses WebCrypto (AES-GCM + RSA-OAEP) and produces different ciphertext for the same plaintext on repeated sends (fresh IV / key per message)."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Display the token symbol glyphs for ckBTC, ckETH, and ckUSDC in the Dashboard Tokens section so users can visually distinguish tokens at a glance.",
-      "target": "frontend",
+      "text": "Make message retrieval consistent with end-to-end encrypted messaging by returning both received and sent messages for the authenticated user (so the inbox can show both directions), while keeping message content stored and transported only as encrypted bytes.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "recent-messages"
+          "msg-user-1"
         ],
         "quotes": [
-          "are you able to add  ck BTC ck ETH ck USDC  token symbols"
+          "implement end-to-end encryption for send messages"
         ]
       },
       "acceptanceCriteria": [
-        "In `frontend/src/components/dashboard/TokensSection.tsx`, each token row/card shows both the token ticker (ckBTC/ckETH/ckUSDC) and the configured glyph from the token config.",
-        "The glyph display is purely presentational (no new backend calls) and renders correctly in both light and dark themes."
+        "backend/main.mo getMessages returns messages where (m.to == caller) OR (m.from == caller).",
+        "The returned Message records still contain only encryptedPayload + keyId (encrypted symmetric key) and do not include any plaintext fields.",
+        "Frontend InboxPage shows both 'Received' and 'Sent' badges for the current user after this change (without requiring frontend workarounds like calling admin APIs)."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Use the configured token symbol glyph consistently anywhere the token symbol is presented in the send/receive panels (headings, button text, and success messages), while keeping user-facing text in English.",
+      "text": "Ensure recipients can decrypt message content client-side using only their locally stored private key (device-only key), and display a clear error when decryption fails (e.g., message not intended for this recipient or missing local private key).",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "recent-messages"
+          "msg-user-1"
         ],
         "quotes": [
-          "are you able to add  ck BTC ck ETH ck USDC  token symbols"
+          "implement end-to-end encryption for send messages"
         ]
       },
       "acceptanceCriteria": [
-        "`frontend/src/components/dashboard/TokenReceivePanel.tsx` displays the token glyph alongside the token ticker in the main heading (e.g., \"Your ₿ ckBTC Receiving Address\" or similar).",
-        "`frontend/src/components/dashboard/TokenSendPanel.tsx` includes the glyph alongside the token ticker in the primary action button label and the success toast message.",
-        "All existing validation and disabled-state behavior remains unchanged."
+        "Opening a received message in MessageDetailPage decrypts successfully when the recipient has their transport private key available locally.",
+        "If the user lacks a local keyPair/privateKey, MessageDetailPage shows an English error state indicating the device cannot decrypt the message.",
+        "If a non-recipient attempts to decrypt a message (or ciphertext/key mismatch occurs), the UI shows an English error and does not display any plaintext."
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Clarify naming and intent of the encrypted symmetric key field end-to-end (frontend + backend types), so it is not mislabeled as a vetKey: keep compatibility where possible, but ensure code and type names/documentation clearly indicate this field is the RSA-OAEP encrypted per-message symmetric key used for E2EE decryption.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-user-1"
+        ],
+        "quotes": [
+          "implement end-to-end encryption for send messages"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Code identifiers and inline comments no longer imply that the stored per-message encrypted key is a “vetKey” (it is the encrypted symmetric key for E2EE).",
+        "Frontend and backend still interoperate after the rename/clarification (send -> store -> list -> decrypt flow works)."
       ]
     }
   ],
   "constraints": [
-    "Do not edit any files under `frontend/src/components/ui` (read-only Shadcn components).",
-    "Do not modify `frontend/src/hooks/useInternetIdentity.ts`, `frontend/src/hooks/useInternetIdentity.tsx`, `frontend/src/hooks/useActor.ts`, or `frontend/src/main.tsx` (immutable paths).",
-    "No backend changes are required for this request."
+    "Backend must remain a single Motoko actor in backend/main.mo (no additional backend services).",
+    "Do not edit files under frontend/src/components/ui (read-only UI component sources); compose them instead.",
+    "Do not modify immutable hook files listed in SYSTEM_CONTEXT (e.g., frontend/src/hooks/useInternetIdentity.ts(x), frontend/src/hooks/useActor.ts, frontend/src/main.tsx).",
+    "No third-party auth providers; Internet Identity only.",
+    "No external databases or non-Motoko backend code."
   ],
   "nonGoals": [
-    "Implementing real token transfer logic (the send flow can remain placeholder).",
-    "Adding new tokens beyond ckBTC, ckETH, and ckUSDC.",
-    "Adding third-party token icon packs or external image/CDN dependencies."
+    "Adding real-time messaging (WebSockets or push).",
+    "Adding third-party cryptography services or server-side decryption.",
+    "Adding new message types beyond ISO 20022 and SWIFT."
   ],
   "imageRequirements": {
     "required": [],

@@ -1,10 +1,9 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import { useInternetIdentity } from '@/hooks/useInternetIdentity';
 import { useQueryClient } from '@tanstack/react-query';
-import LoginButton from './LoginButton';
 import ProfileSetupModal from '@/pages/ProfileSetupModal';
 import { useGetCallerUserProfile } from '@/hooks/useProfiles';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import UnauthenticatedLanding from '@/components/landing/UnauthenticatedLanding';
 
 interface AuthGateProps {
   children: ReactNode;
@@ -44,24 +43,7 @@ export default function AuthGate({ children }: AuthGateProps) {
   }
 
   if (!isAuthenticated) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Secure Banking Messaging</CardTitle>
-            <CardDescription>
-              ISO 20022 & SWIFT message exchange with end-to-end encryption
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4">
-            <p className="text-sm text-muted-foreground text-center">
-              Please authenticate to access the secure messaging platform
-            </p>
-            <LoginButton />
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <UnauthenticatedLanding />;
   }
 
   return (
