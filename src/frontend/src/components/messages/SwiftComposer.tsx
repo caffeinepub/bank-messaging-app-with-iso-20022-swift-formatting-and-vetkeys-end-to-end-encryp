@@ -1,11 +1,20 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import RawPreview from './RawPreview';
-import { generateSwiftRaw, type SwiftMessage } from '@/lib/messageFormats/swift';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  type SwiftMessage,
+  generateSwiftRaw,
+} from "@/lib/messageFormats/swift";
+import { useEffect, useState } from "react";
+import RawPreview from "./RawPreview";
 
 interface SwiftComposerProps {
   value: SwiftMessage;
@@ -13,7 +22,7 @@ interface SwiftComposerProps {
 }
 
 export default function SwiftComposer({ value, onChange }: SwiftComposerProps) {
-  const [rawPreview, setRawPreview] = useState('');
+  const [rawPreview, setRawPreview] = useState("");
 
   useEffect(() => {
     setRawPreview(generateSwiftRaw(value));
@@ -34,7 +43,9 @@ export default function SwiftComposer({ value, onChange }: SwiftComposerProps) {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Basic Header (Block 1)</CardTitle>
-            <CardDescription>Application and service identifiers</CardDescription>
+            <CardDescription>
+              Application and service identifiers
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-2">
@@ -42,7 +53,9 @@ export default function SwiftComposer({ value, onChange }: SwiftComposerProps) {
               <Input
                 id="messageType"
                 value={value.messageType}
-                onChange={(e) => handleFieldChange('messageType', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("messageType", e.target.value)
+                }
                 placeholder="103"
                 maxLength={3}
               />
@@ -52,7 +65,7 @@ export default function SwiftComposer({ value, onChange }: SwiftComposerProps) {
               <Input
                 id="senderBIC"
                 value={value.senderBIC}
-                onChange={(e) => handleFieldChange('senderBIC', e.target.value)}
+                onChange={(e) => handleFieldChange("senderBIC", e.target.value)}
                 placeholder="BANKGB2LXXX"
               />
             </div>
@@ -61,7 +74,9 @@ export default function SwiftComposer({ value, onChange }: SwiftComposerProps) {
               <Input
                 id="receiverBIC"
                 value={value.receiverBIC}
-                onChange={(e) => handleFieldChange('receiverBIC', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("receiverBIC", e.target.value)
+                }
                 placeholder="BANKUS33XXX"
               />
             </div>
@@ -79,7 +94,9 @@ export default function SwiftComposer({ value, onChange }: SwiftComposerProps) {
               <Input
                 id="transactionRef"
                 value={value.transactionRef}
-                onChange={(e) => handleFieldChange('transactionRef', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("transactionRef", e.target.value)
+                }
                 placeholder="TRN20260210001"
               />
             </div>
@@ -89,7 +106,7 @@ export default function SwiftComposer({ value, onChange }: SwiftComposerProps) {
                 id="valueDate"
                 type="date"
                 value={value.valueDate}
-                onChange={(e) => handleFieldChange('valueDate', e.target.value)}
+                onChange={(e) => handleFieldChange("valueDate", e.target.value)}
               />
             </div>
             <div className="grid gap-2">
@@ -97,7 +114,7 @@ export default function SwiftComposer({ value, onChange }: SwiftComposerProps) {
               <Input
                 id="currency"
                 value={value.currency}
-                onChange={(e) => handleFieldChange('currency', e.target.value)}
+                onChange={(e) => handleFieldChange("currency", e.target.value)}
                 placeholder="USD"
                 maxLength={3}
               />
@@ -107,7 +124,7 @@ export default function SwiftComposer({ value, onChange }: SwiftComposerProps) {
               <Input
                 id="amount"
                 value={value.amount}
-                onChange={(e) => handleFieldChange('amount', e.target.value)}
+                onChange={(e) => handleFieldChange("amount", e.target.value)}
                 placeholder="1000000.00"
               />
             </div>
@@ -124,27 +141,37 @@ export default function SwiftComposer({ value, onChange }: SwiftComposerProps) {
               <Textarea
                 id="orderingCustomer"
                 value={value.orderingCustomer}
-                onChange={(e) => handleFieldChange('orderingCustomer', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("orderingCustomer", e.target.value)
+                }
                 placeholder="Account number and customer name"
                 rows={3}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="beneficiaryCustomer">Beneficiary Customer (59)</Label>
+              <Label htmlFor="beneficiaryCustomer">
+                Beneficiary Customer (59)
+              </Label>
               <Textarea
                 id="beneficiaryCustomer"
                 value={value.beneficiaryCustomer}
-                onChange={(e) => handleFieldChange('beneficiaryCustomer', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("beneficiaryCustomer", e.target.value)
+                }
                 placeholder="Account number and beneficiary name"
                 rows={3}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="remittanceInfo">Remittance Information (70)</Label>
+              <Label htmlFor="remittanceInfo">
+                Remittance Information (70)
+              </Label>
               <Textarea
                 id="remittanceInfo"
                 value={value.remittanceInfo}
-                onChange={(e) => handleFieldChange('remittanceInfo', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("remittanceInfo", e.target.value)
+                }
                 placeholder="Payment details"
                 rows={3}
               />

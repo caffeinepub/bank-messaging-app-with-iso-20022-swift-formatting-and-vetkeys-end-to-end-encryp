@@ -1,13 +1,13 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useActor } from './useActor';
-import type { EncryptedMessage, MessageType } from '@/backend';
-import { Principal } from '@dfinity/principal';
+import type { EncryptedMessage, MessageType } from "@/backend";
+import type { Principal } from "@dfinity/principal";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useActor } from "./useActor";
 
 export function useGetMessages() {
   const { actor, isFetching } = useActor();
 
   return useQuery<EncryptedMessage[]>({
-    queryKey: ['messages'],
+    queryKey: ["messages"],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllMessagesForCaller();
@@ -20,9 +20,10 @@ export function useGetMessageById(messageId: bigint | null) {
   const { actor, isFetching } = useActor();
 
   return useQuery<EncryptedMessage>({
-    queryKey: ['message', messageId?.toString()],
+    queryKey: ["message", messageId?.toString()],
     queryFn: async () => {
-      if (!actor || messageId === null) throw new Error('Actor or message ID not available');
+      if (!actor || messageId === null)
+        throw new Error("Actor or message ID not available");
       return actor.getMessageById(messageId);
     },
     enabled: !!actor && !isFetching && messageId !== null,
@@ -46,11 +47,16 @@ export function useSendMessage() {
       encryptedPayload: Uint8Array;
       encryptedSymmetricKey: Uint8Array;
     }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.sendMessage(to, messageType, encryptedPayload, encryptedSymmetricKey);
+      if (!actor) throw new Error("Actor not available");
+      return actor.sendMessage(
+        to,
+        messageType,
+        encryptedPayload,
+        encryptedSymmetricKey,
+      );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['messages'] });
+      queryClient.invalidateQueries({ queryKey: ["messages"] });
     },
   });
 }

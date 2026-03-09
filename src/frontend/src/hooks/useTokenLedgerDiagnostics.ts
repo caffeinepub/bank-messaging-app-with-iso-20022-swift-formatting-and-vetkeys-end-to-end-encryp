@@ -1,6 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
-import { checkTokenLedgerConfiguration, type TokenLedgerCheck } from '@/config/tokens';
-import { fetchIcrcLedgerMetadata, type IcrcLedgerMetadata } from '@/lib/icrc/icrcLedgerClient';
+import {
+  type TokenLedgerCheck,
+  checkTokenLedgerConfiguration,
+} from "@/config/tokens";
+import {
+  type IcrcLedgerMetadata,
+  fetchIcrcLedgerMetadata,
+} from "@/lib/icrc/icrcLedgerClient";
+import { useQuery } from "@tanstack/react-query";
 
 export interface TokenDiagnosticResult extends TokenLedgerCheck {
   metadataCheck?: {
@@ -14,12 +20,12 @@ export interface TokenDiagnosticResult extends TokenLedgerCheck {
  * React Query hook that performs token ledger diagnostics:
  * 1. Checks configured vs expected ledger canister IDs
  * 2. Performs read-only metadata calls to verify connectivity
- * 
+ *
  * Does NOT perform any transfer operations.
  */
 export function useTokenLedgerDiagnostics() {
   return useQuery<TokenDiagnosticResult[]>({
-    queryKey: ['tokenLedgerDiagnostics'],
+    queryKey: ["tokenLedgerDiagnostics"],
     queryFn: async () => {
       // Step 1: Check configuration
       const configChecks = checkTokenLedgerConfiguration();
@@ -35,7 +41,9 @@ export function useTokenLedgerDiagnostics() {
         }
 
         // Perform read-only metadata call
-        const metadataResult = await fetchIcrcLedgerMetadata(check.configuredLedgerCanisterId);
+        const metadataResult = await fetchIcrcLedgerMetadata(
+          check.configuredLedgerCanisterId,
+        );
 
         return {
           ...check,

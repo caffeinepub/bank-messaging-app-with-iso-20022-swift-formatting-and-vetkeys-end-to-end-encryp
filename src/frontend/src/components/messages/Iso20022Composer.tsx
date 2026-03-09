@@ -1,25 +1,40 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import RawPreview from './RawPreview';
-import { generateIso20022Raw, type Iso20022Message } from '@/lib/messageFormats/iso20022';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  type Iso20022Message,
+  generateIso20022Raw,
+} from "@/lib/messageFormats/iso20022";
+import { useEffect, useState } from "react";
+import RawPreview from "./RawPreview";
 
 interface Iso20022ComposerProps {
   value: Iso20022Message;
   onChange: (value: Iso20022Message) => void;
 }
 
-export default function Iso20022Composer({ value, onChange }: Iso20022ComposerProps) {
-  const [rawPreview, setRawPreview] = useState('');
+export default function Iso20022Composer({
+  value,
+  onChange,
+}: Iso20022ComposerProps) {
+  const [rawPreview, setRawPreview] = useState("");
 
   useEffect(() => {
     setRawPreview(generateIso20022Raw(value));
   }, [value]);
 
-  const handleFieldChange = (field: keyof Iso20022Message, fieldValue: string) => {
+  const handleFieldChange = (
+    field: keyof Iso20022Message,
+    fieldValue: string,
+  ) => {
     onChange({ ...value, [field]: fieldValue });
   };
 
@@ -42,7 +57,7 @@ export default function Iso20022Composer({ value, onChange }: Iso20022ComposerPr
               <Input
                 id="messageId"
                 value={value.messageId}
-                onChange={(e) => handleFieldChange('messageId', e.target.value)}
+                onChange={(e) => handleFieldChange("messageId", e.target.value)}
                 placeholder="MSG-20260210-001"
               />
             </div>
@@ -52,7 +67,9 @@ export default function Iso20022Composer({ value, onChange }: Iso20022ComposerPr
                 id="creationDateTime"
                 type="datetime-local"
                 value={value.creationDateTime}
-                onChange={(e) => handleFieldChange('creationDateTime', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("creationDateTime", e.target.value)
+                }
               />
             </div>
           </CardContent>
@@ -69,7 +86,9 @@ export default function Iso20022Composer({ value, onChange }: Iso20022ComposerPr
               <Input
                 id="instructionId"
                 value={value.instructionId}
-                onChange={(e) => handleFieldChange('instructionId', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("instructionId", e.target.value)
+                }
                 placeholder="INSTR-001"
               />
             </div>
@@ -78,7 +97,9 @@ export default function Iso20022Composer({ value, onChange }: Iso20022ComposerPr
               <Input
                 id="endToEndId"
                 value={value.endToEndId}
-                onChange={(e) => handleFieldChange('endToEndId', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("endToEndId", e.target.value)
+                }
                 placeholder="E2E-001"
               />
             </div>
@@ -87,7 +108,7 @@ export default function Iso20022Composer({ value, onChange }: Iso20022ComposerPr
               <Input
                 id="amount"
                 value={value.amount}
-                onChange={(e) => handleFieldChange('amount', e.target.value)}
+                onChange={(e) => handleFieldChange("amount", e.target.value)}
                 placeholder="1000.00"
               />
             </div>
@@ -96,7 +117,7 @@ export default function Iso20022Composer({ value, onChange }: Iso20022ComposerPr
               <Input
                 id="currency"
                 value={value.currency}
-                onChange={(e) => handleFieldChange('currency', e.target.value)}
+                onChange={(e) => handleFieldChange("currency", e.target.value)}
                 placeholder="USD"
                 maxLength={3}
               />
@@ -115,7 +136,9 @@ export default function Iso20022Composer({ value, onChange }: Iso20022ComposerPr
               <Input
                 id="debtorName"
                 value={value.debtorName}
-                onChange={(e) => handleFieldChange('debtorName', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("debtorName", e.target.value)
+                }
                 placeholder="John Doe"
               />
             </div>
@@ -124,7 +147,9 @@ export default function Iso20022Composer({ value, onChange }: Iso20022ComposerPr
               <Input
                 id="debtorAccount"
                 value={value.debtorAccount}
-                onChange={(e) => handleFieldChange('debtorAccount', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("debtorAccount", e.target.value)
+                }
                 placeholder="GB29NWBK60161331926819"
               />
             </div>
@@ -133,7 +158,9 @@ export default function Iso20022Composer({ value, onChange }: Iso20022ComposerPr
               <Input
                 id="creditorName"
                 value={value.creditorName}
-                onChange={(e) => handleFieldChange('creditorName', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("creditorName", e.target.value)
+                }
                 placeholder="Jane Smith"
               />
             </div>
@@ -142,7 +169,9 @@ export default function Iso20022Composer({ value, onChange }: Iso20022ComposerPr
               <Input
                 id="creditorAccount"
                 value={value.creditorAccount}
-                onChange={(e) => handleFieldChange('creditorAccount', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("creditorAccount", e.target.value)
+                }
                 placeholder="DE89370400440532013000"
               />
             </div>
@@ -159,7 +188,9 @@ export default function Iso20022Composer({ value, onChange }: Iso20022ComposerPr
               <Textarea
                 id="remittanceInfo"
                 value={value.remittanceInfo}
-                onChange={(e) => handleFieldChange('remittanceInfo', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("remittanceInfo", e.target.value)
+                }
                 placeholder="Invoice payment reference"
                 rows={3}
               />

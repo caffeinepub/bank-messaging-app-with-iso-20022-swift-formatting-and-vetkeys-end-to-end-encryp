@@ -1,6 +1,13 @@
-import { Shield, Lock, Users, MessageSquare, Key, FileCheck } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import LoginButton from '@/components/auth/LoginButton';
+import LoginButton from "@/components/auth/LoginButton";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Key, Lock, MessageSquare, Shield, Users } from "lucide-react";
+import ImportantTokenInformation from "./ImportantTokenInformation";
 
 export default function UnauthenticatedLanding() {
   return (
@@ -9,12 +16,19 @@ export default function UnauthenticatedLanding() {
       <div className="container mx-auto px-4 py-16 md:py-24">
         <div className="max-w-4xl mx-auto text-center space-y-6">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-            Secure Banking Messaging
+            OP_DUP Secure Messages
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
-            ISO 20022 & SWIFT message exchange with military-grade end-to-end encryption
+            Military-grade end-to-end encrypted messaging on the blockchain
           </p>
-          <div className="pt-4">
+          <div className="max-w-3xl mx-auto py-4">
+            <p className="text-sm md:text-base text-muted-foreground border border-border rounded-lg p-4 bg-muted/30">
+              OP_DUP Dapp operates without a central authority and does not
+              offer warranties or guarantees, consistent with its foundational
+              principle of eliminating reliance on trusted intermediaries
+            </p>
+          </div>
+          <div className="pt-4 flex justify-center">
             <LoginButton />
           </div>
         </div>
@@ -29,24 +43,13 @@ export default function UnauthenticatedLanding() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             <Card>
               <CardHeader>
-                <FileCheck className="h-10 w-10 text-primary mb-2" />
-                <CardTitle>ISO 20022 & SWIFT Support</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-base">
-                  Full support for ISO 20022 and SWIFT message formats, enabling seamless integration with global banking standards.
-                </CardDescription>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
                 <Lock className="h-10 w-10 text-primary mb-2" />
                 <CardTitle>End-to-End Encryption</CardTitle>
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-base">
-                  Messages are encrypted on your device before transmission and can only be decrypted by the intended recipient.
+                  Messages are encrypted on your device before transmission and
+                  can only be decrypted by the intended recipient.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -58,7 +61,8 @@ export default function UnauthenticatedLanding() {
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-base">
-                  Build your network of verified contacts. Only mutually trusted parties can exchange messages.
+                  Build your network of verified contacts. Only mutually trusted
+                  parties can exchange messages.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -70,7 +74,8 @@ export default function UnauthenticatedLanding() {
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-base">
-                  Your private encryption keys never leave your device, ensuring complete control over your security.
+                  Your private encryption keys never leave your device, ensuring
+                  complete control over your security.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -82,7 +87,8 @@ export default function UnauthenticatedLanding() {
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-base">
-                  All messages are stored encrypted on the blockchain, accessible only to authorized participants.
+                  All messages are stored encrypted on the blockchain,
+                  accessible only to authorized participants.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -94,13 +100,17 @@ export default function UnauthenticatedLanding() {
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-base">
-                  Passwordless authentication using Internet Computer's secure identity framework with biometric support.
+                  Passwordless authentication using Internet Computer's secure
+                  identity framework with biometric support.
                 </CardDescription>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
+
+      {/* Important Token Information Section */}
+      <ImportantTokenInformation />
 
       {/* Security Information Section */}
       <div className="container mx-auto px-4 py-16 bg-muted/30">
@@ -125,8 +135,10 @@ export default function UnauthenticatedLanding() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  Your private encryption keys are generated locally on your device and never transmitted to any server. 
-                  You maintain complete control over your cryptographic identity, ensuring that no third party can access your private keys.
+                  Your private encryption keys are generated locally on your
+                  device and never transmitted to any server. You maintain
+                  complete control over your cryptographic identity, ensuring
+                  that no third party can access your private keys.
                 </p>
               </CardContent>
             </Card>
@@ -140,8 +152,10 @@ export default function UnauthenticatedLanding() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  Messages are encrypted locally on your device before being sent and can only be decrypted by the intended recipient. 
-                  Even the platform infrastructure cannot read your messages—only you and your recipient hold the keys.
+                  Messages are encrypted locally on your device before being
+                  sent and can only be decrypted by the intended recipient. Even
+                  the platform infrastructure cannot read your messages -- only
+                  you and your recipient hold the keys.
                 </p>
               </CardContent>
             </Card>
@@ -155,8 +169,11 @@ export default function UnauthenticatedLanding() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  Messaging is restricted to mutually trusted contacts only. Both parties must explicitly add each other as trusted contacts 
-                  before any messages can be exchanged, preventing unsolicited communications and ensuring a secure, verified network.
+                  Messaging is restricted to mutually trusted contacts only.
+                  Both parties must explicitly add each other as trusted
+                  contacts before any messages can be exchanged, preventing
+                  unsolicited communications and ensuring a secure, verified
+                  network.
                 </p>
               </CardContent>
             </Card>
@@ -170,8 +187,10 @@ export default function UnauthenticatedLanding() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  Built on the Internet Computer blockchain, the platform benefits from tamper-proof storage, transparent operations, 
-                  and decentralized infrastructure that eliminates single points of failure.
+                  Built on the Internet Computer blockchain, the platform
+                  benefits from tamper-proof storage, transparent operations,
+                  and decentralized infrastructure that eliminates single points
+                  of failure.
                 </p>
               </CardContent>
             </Card>
@@ -186,7 +205,8 @@ export default function UnauthenticatedLanding() {
             Ready to Get Started?
           </h2>
           <p className="text-lg text-muted-foreground">
-            Authenticate with Internet Identity to access the secure messaging platform
+            Authenticate with Internet Identity to access the secure messaging
+            platform
           </p>
           <LoginButton />
         </div>

@@ -1,13 +1,13 @@
 /**
  * VetKey utilities for session-scoped transport key persistence
- * 
+ *
  * A vetKey is a session-scoped identifier that allows transport keypairs
  * to be persisted and restored across navigation and page reloads within
  * the same browser session, without ever sending the private key to the backend.
  */
 
-const VETKEY_STORAGE_KEY = 'transport_vetkey';
-const VETKEY_PREFIX = 'vetkey_';
+const VETKEY_STORAGE_KEY = "transport_vetkey";
+const VETKEY_PREFIX = "vetkey_";
 
 /**
  * Generates a new random vetKey identifier
@@ -17,8 +17,8 @@ export function generateVetKey(): string {
   const randomBytes = new Uint8Array(16);
   crypto.getRandomValues(randomBytes);
   const hexString = Array.from(randomBytes)
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
   return `${VETKEY_PREFIX}${hexString}`;
 }
 
@@ -26,10 +26,12 @@ export function generateVetKey(): string {
  * Validates that a string is a properly formatted vetKey
  */
 export function isValidVetKey(vetKey: string): boolean {
-  if (!vetKey || typeof vetKey !== 'string') {
+  if (!vetKey || typeof vetKey !== "string") {
     return false;
   }
-  return vetKey.startsWith(VETKEY_PREFIX) && vetKey.length > VETKEY_PREFIX.length;
+  return (
+    vetKey.startsWith(VETKEY_PREFIX) && vetKey.length > VETKEY_PREFIX.length
+  );
 }
 
 /**
@@ -37,12 +39,12 @@ export function isValidVetKey(vetKey: string): boolean {
  */
 export function storeActiveVetKey(vetKey: string): void {
   if (!isValidVetKey(vetKey)) {
-    throw new Error('Invalid vetKey format');
+    throw new Error("Invalid vetKey format");
   }
   try {
     sessionStorage.setItem(VETKEY_STORAGE_KEY, vetKey);
   } catch (error) {
-    console.error('Failed to store active vetKey:', error);
+    console.error("Failed to store active vetKey:", error);
     throw error;
   }
 }
@@ -58,7 +60,7 @@ export function getActiveVetKey(): string | null {
     }
     return null;
   } catch (error) {
-    console.error('Failed to retrieve active vetKey:', error);
+    console.error("Failed to retrieve active vetKey:", error);
     return null;
   }
 }
@@ -70,7 +72,7 @@ export function clearActiveVetKey(): void {
   try {
     sessionStorage.removeItem(VETKEY_STORAGE_KEY);
   } catch (error) {
-    console.error('Failed to clear active vetKey:', error);
+    console.error("Failed to clear active vetKey:", error);
   }
 }
 
@@ -80,7 +82,7 @@ export function clearActiveVetKey(): void {
  */
 export function getTransportKeyStorageKey(vetKey: string): string {
   if (!isValidVetKey(vetKey)) {
-    throw new Error('Invalid vetKey format');
+    throw new Error("Invalid vetKey format");
   }
   return `transport_keypair_${vetKey}`;
 }
@@ -96,6 +98,6 @@ export function clearTransportKeyData(vetKey: string): void {
     const storageKey = getTransportKeyStorageKey(vetKey);
     sessionStorage.removeItem(storageKey);
   } catch (error) {
-    console.error('Failed to clear transport key data:', error);
+    console.error("Failed to clear transport key data:", error);
   }
 }

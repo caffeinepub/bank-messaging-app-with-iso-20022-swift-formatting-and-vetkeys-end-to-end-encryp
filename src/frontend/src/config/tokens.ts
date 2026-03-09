@@ -11,33 +11,33 @@ export interface TokenConfig {
 
 export const TOKENS: Record<string, TokenConfig> = {
   ckBTC: {
-    symbol: 'ckBTC',
-    name: 'Chain Key Bitcoin',
-    glyph: '₿',
-    ledgerCanisterId: 'mxzaz-hqaaa-aaaar-qaada-cai',
+    symbol: "ckBTC",
+    name: "Chain Key Bitcoin",
+    glyph: "₿",
+    ledgerCanisterId: "mxzaz-hqaaa-aaaar-qaada-cai",
     decimals: 8,
   },
   ckETH: {
-    symbol: 'ckETH',
-    name: 'Chain Key Ethereum',
-    glyph: 'Ξ',
-    ledgerCanisterId: 'ss2fx-dyaaa-aaaar-qacoq-cai',
+    symbol: "ckETH",
+    name: "Chain Key Ethereum",
+    glyph: "Ξ",
+    ledgerCanisterId: "ss2fx-dyaaa-aaaar-qacoq-cai",
     decimals: 18,
   },
   ckUSDC: {
-    symbol: 'ckUSDC',
-    name: 'Chain Key USDC',
-    glyph: '$',
-    ledgerCanisterId: 'xevnm-gaaaa-aaaar-qafnq-cai',
+    symbol: "ckUSDC",
+    name: "Chain Key USDC",
+    glyph: "$",
+    ledgerCanisterId: "xevnm-gaaaa-aaaar-qafnq-cai",
     decimals: 6,
   },
 };
 
 // Expected mainnet ledger canister IDs for verification
 export const EXPECTED_MAINNET_LEDGER_IDS: Record<string, string> = {
-  ckBTC: 'mxzaz-hqaaa-aaaar-qaada-cai',
-  ckETH: 'ss2fx-dyaaa-aaaar-qacoq-cai',
-  ckUSDC: 'xevnm-gaaaa-aaaar-qafnq-cai',
+  ckBTC: "mxzaz-hqaaa-aaaar-qaada-cai",
+  ckETH: "ss2fx-dyaaa-aaaar-qacoq-cai",
+  ckUSDC: "xevnm-gaaaa-aaaar-qafnq-cai",
 };
 
 export interface TokenLedgerCheck {
@@ -80,5 +80,5 @@ export function getTokenConfig(tokenSymbol: string): TokenConfig | undefined {
  * Returns the configured glyph or an empty string if not found.
  */
 export function getTokenGlyph(tokenSymbol: string): string {
-  return TOKENS[tokenSymbol]?.glyph || '';
+  return TOKENS[tokenSymbol]?.glyph || "";
 }

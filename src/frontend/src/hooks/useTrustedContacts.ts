@@ -1,12 +1,12 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useActor } from './useActor';
-import { Principal } from '@dfinity/principal';
+import type { Principal } from "@dfinity/principal";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useActor } from "./useActor";
 
 export function useGetTrustedContacts() {
   const { actor, isFetching } = useActor();
 
   return useQuery<Principal[]>({
-    queryKey: ['trustedContacts'],
+    queryKey: ["trustedContacts"],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getTrustedContacts();
@@ -21,11 +21,11 @@ export function useAddTrustedContact() {
 
   return useMutation({
     mutationFn: async (user: Principal) => {
-      if (!actor) throw new Error('Actor not available');
+      if (!actor) throw new Error("Actor not available");
       return actor.addTrustedContact(user);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['trustedContacts'] });
+      queryClient.invalidateQueries({ queryKey: ["trustedContacts"] });
     },
   });
 }
@@ -36,11 +36,11 @@ export function useRemoveTrustedContact() {
 
   return useMutation({
     mutationFn: async (user: Principal) => {
-      if (!actor) throw new Error('Actor not available');
+      if (!actor) throw new Error("Actor not available");
       return actor.removeTrustedContact(user);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['trustedContacts'] });
+      queryClient.invalidateQueries({ queryKey: ["trustedContacts"] });
     },
   });
 }
@@ -49,7 +49,7 @@ export function useIsTrustedContact(user: Principal | null) {
   const { actor, isFetching } = useActor();
 
   return useQuery<boolean>({
-    queryKey: ['isTrustedContact', user?.toString()],
+    queryKey: ["isTrustedContact", user?.toString()],
     queryFn: async () => {
       if (!actor || !user) return false;
       return actor.isTrustedContact(user);

@@ -1,29 +1,58 @@
-import { useState } from 'react';
-import { Principal } from '@dfinity/principal';
-import { useGetTrustedContacts, useAddTrustedContact, useRemoveTrustedContact } from '@/hooks/useTrustedContacts';
-import { useGetUserProfile } from '@/hooks/useProfiles';
-import { useGetRelationshipStatus } from '@/hooks/useSyncStatus';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { Trash2, UserPlus, AlertCircle, RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useGetUserProfile } from "@/hooks/useProfiles";
+import { useGetRelationshipStatus } from "@/hooks/useSyncStatus";
+import {
+  useAddTrustedContact,
+  useGetTrustedContacts,
+  useRemoveTrustedContact,
+} from "@/hooks/useTrustedContacts";
+import { Principal } from "@dfinity/principal";
+import {
+  AlertCircle,
+  CheckCircle2,
+  RefreshCw,
+  Trash2,
+  UserPlus,
+  XCircle,
+} from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 function ContactRow({ principal }: { principal: Principal }) {
   const { data: profile } = useGetUserProfile(principal);
-  const { data: syncStatus, refetch: refetchStatus, isLoading: statusLoading } = useGetRelationshipStatus(principal);
+  const {
+    data: syncStatus,
+    refetch: refetchStatus,
+    isLoading: statusLoading,
+  } = useGetRelationshipStatus(principal);
   const removeTrustedContact = useRemoveTrustedContact();
 
   const handleRemove = async () => {
     try {
       await removeTrustedContact.mutateAsync(principal);
-      toast.success('Contact removed');
+      toast.success("Contact removed");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to remove contact';
+      const message =
+        error instanceof Error ? error.message : "Failed to remove contact";
       toast.error(message);
     }
   };
@@ -31,39 +60,39 @@ function ContactRow({ principal }: { principal: Principal }) {
   const handleRefresh = async () => {
     try {
       await refetchStatus();
-      toast.success('Status refreshed');
-    } catch (error) {
-      toast.error('Failed to refresh status');
+      toast.success("Status refreshed");
+    } catch (_error) {
+      toast.error("Failed to refresh status");
     }
   };
 
   const getReadinessInfo = () => {
-    if (!syncStatus) return { ready: false, hint: 'Unable to check status' };
+    if (!syncStatus) return { ready: false, hint: "Unable to check status" };
 
     if (!syncStatus.callerHasPublicKey) {
       return {
         ready: false,
-        hint: 'You need to register a transport key in Dashboard',
+        hint: "You need to register a transport key in Dashboard",
       };
     }
 
     if (!syncStatus.otherHasPublicKey) {
       return {
         ready: false,
-        hint: 'They need to register a transport key',
+        hint: "They need to register a transport key",
       };
     }
 
     if (!syncStatus.otherTrustsCaller) {
       return {
         ready: false,
-        hint: 'They need to add you back as a trusted contact',
+        hint: "They need to add you back as a trusted contact",
       };
     }
 
     return {
       ready: true,
-      hint: 'Ready to exchange messages',
+      hint: "Ready to exchange messages",
     };
   };
 
@@ -72,7 +101,7 @@ function ContactRow({ principal }: { principal: Principal }) {
   return (
     <TableRow>
       <TableCell className="font-medium">
-        {profile?.name || 'Unknown'}
+        {profile?.name || "Unknown"}
       </TableCell>
       <TableCell className="font-mono text-xs">
         {principal.toString()}
@@ -85,7 +114,10 @@ function ContactRow({ principal }: { principal: Principal }) {
               Checking...
             </Badge>
           ) : readinessInfo.ready ? (
-            <Badge variant="default" className="gap-1 bg-success text-success-foreground">
+            <Badge
+              variant="default"
+              className="gap-1 bg-success text-success-foreground"
+            >
               <CheckCircle2 className="h-3 w-3" />
               Ready
             </Badge>
@@ -109,7 +141,9 @@ function ContactRow({ principal }: { principal: Principal }) {
             disabled={statusLoading}
             title="Refresh status"
           >
-            <RefreshCw className={`h-4 w-4 ${statusLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 ${statusLoading ? "animate-spin" : ""}`}
+            />
           </Button>
           <Button
             variant="ghost"
@@ -127,7 +161,7 @@ function ContactRow({ principal }: { principal: Principal }) {
 }
 
 export default function ContactsPage() {
-  const [principalInput, setPrincipalInput] = useState('');
+  const [principalInput, setPrincipalInput] = useState("");
   const { data: contacts = [] } = useGetTrustedContacts();
   const addTrustedContact = useAddTrustedContact();
 
@@ -135,17 +169,18 @@ export default function ContactsPage() {
     e.preventDefault();
 
     if (!principalInput.trim()) {
-      toast.error('Please enter a principal address');
+      toast.error("Please enter a principal address");
       return;
     }
 
     try {
       const principal = Principal.fromText(principalInput.trim());
       await addTrustedContact.mutateAsync(principal);
-      toast.success('Contact added successfully');
-      setPrincipalInput('');
+      toast.success("Contact added successfully");
+      setPrincipalInput("");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to add contact';
+      const message =
+        error instanceof Error ? error.message : "Failed to add contact";
       toast.error(message);
     }
   };
@@ -153,7 +188,9 @@ export default function ContactsPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Trusted Contacts</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">
+          Trusted Contacts
+        </h1>
         <p className="text-muted-foreground mt-1">
           Manage users authorized to exchange encrypted messages with you
         </p>
@@ -163,7 +200,8 @@ export default function ContactsPage() {
         <CardHeader>
           <CardTitle className="text-base">Add New Contact</CardTitle>
           <CardDescription>
-            Enter the principal address of the user you want to add as a trusted contact
+            Enter the principal address of the user you want to add as a trusted
+            contact
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -178,9 +216,13 @@ export default function ContactsPage() {
                 className="font-mono text-sm"
               />
             </div>
-            <Button type="submit" disabled={addTrustedContact.isPending} className="gap-2">
+            <Button
+              type="submit"
+              disabled={addTrustedContact.isPending}
+              className="gap-2"
+            >
               <UserPlus className="h-4 w-4" />
-              {addTrustedContact.isPending ? 'Adding...' : 'Add Contact'}
+              {addTrustedContact.isPending ? "Adding..." : "Add Contact"}
             </Button>
           </form>
         </CardContent>
@@ -198,8 +240,8 @@ export default function ContactsPage() {
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                You haven't added any trusted contacts yet. Add contacts to start exchanging
-                encrypted messages.
+                You haven't added any trusted contacts yet. Add contacts to
+                start exchanging encrypted messages.
               </AlertDescription>
             </Alert>
           ) : (
@@ -215,7 +257,10 @@ export default function ContactsPage() {
               </TableHeader>
               <TableBody>
                 {contacts.map((principal) => (
-                  <ContactRow key={principal.toString()} principal={principal} />
+                  <ContactRow
+                    key={principal.toString()}
+                    principal={principal}
+                  />
                 ))}
               </TableBody>
             </Table>
@@ -226,8 +271,9 @@ export default function ContactsPage() {
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          <strong>Note:</strong> Both you and the other user must add each other as trusted contacts
-          before you can exchange messages. This ensures mutual consent for secure communication.
+          <strong>Note:</strong> Both you and the other user must add each other
+          as trusted contacts before you can exchange messages. This ensures
+          mutual consent for secure communication.
         </AlertDescription>
       </Alert>
     </div>

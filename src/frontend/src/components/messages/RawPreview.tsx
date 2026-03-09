@@ -1,8 +1,14 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Copy, Check } from 'lucide-react';
-import { toast } from 'sonner';
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Check, Copy } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface RawPreviewProps {
   content: string;
@@ -15,10 +21,10 @@ export default function RawPreview({ content }: RawPreviewProps) {
     try {
       await navigator.clipboard.writeText(content);
       setCopied(true);
-      toast.success('Copied to clipboard');
+      toast.success("Copied to clipboard");
       setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      toast.error('Failed to copy to clipboard');
+    } catch (_error) {
+      toast.error("Failed to copy to clipboard");
     }
   };
 

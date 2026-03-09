@@ -6,12 +6,12 @@ import Array "mo:core/Array";
 import Blob "mo:core/Blob";
 import Time "mo:core/Time";
 import Principal "mo:core/Principal";
-import Migration "migration";
+
 
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
-(with migration = Migration.run)
+
 actor {
   type EncryptedMessage = {
     id : Nat;
@@ -277,3 +277,4 @@ actor {
     };
   };
 };
+

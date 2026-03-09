@@ -1,4 +1,4 @@
-import { importPublicKey } from './transportKeys';
+import { importPublicKey } from "./transportKeys";
 
 /**
  * Encrypts a plaintext message using hybrid encryption (AES-GCM + RSA-OAEP).
@@ -8,16 +8,19 @@ import { importPublicKey } from './transportKeys';
  */
 export async function encryptPayload(
   plaintext: string,
-  recipientPublicKeyBytes: Uint8Array
-): Promise<{ encryptedPayload: Uint8Array; encryptedSymmetricKey: Uint8Array }> {
+  recipientPublicKeyBytes: Uint8Array,
+): Promise<{
+  encryptedPayload: Uint8Array;
+  encryptedSymmetricKey: Uint8Array;
+}> {
   // Generate a random symmetric key for this message (fresh per message)
   const symmetricKey = await window.crypto.subtle.generateKey(
     {
-      name: 'AES-GCM',
+      name: "AES-GCM",
       length: 256,
     },
     true,
-    ['encrypt', 'decrypt']
+    ["encrypt", "decrypt"],
   );
 
   // Encrypt the plaintext with the symmetric key
@@ -27,25 +30,28 @@ export async function encryptPayload(
 
   const encryptedData = await window.crypto.subtle.encrypt(
     {
-      name: 'AES-GCM',
+      name: "AES-GCM",
       iv,
     },
     symmetricKey,
-    plaintextBytes
+    plaintextBytes,
   );
 
   // Export the symmetric key
-  const exportedSymmetricKey = await window.crypto.subtle.exportKey('raw', symmetricKey);
+  const exportedSymmetricKey = await window.crypto.subtle.exportKey(
+    "raw",
+    symmetricKey,
+  );
 
   // Encrypt the symmetric key with the recipient's public key (RSA-OAEP)
   // This is the E2EE key wrapping - only recipient's private key can unwrap
   const recipientPublicKey = await importPublicKey(recipientPublicKeyBytes);
   const encryptedSymmetricKey = await window.crypto.subtle.encrypt(
     {
-      name: 'RSA-OAEP',
+      name: "RSA-OAEP",
     },
     recipientPublicKey,
-    exportedSymmetricKey
+    exportedSymmetricKey,
   );
 
   // Combine IV + encrypted data
@@ -68,7 +74,7 @@ export async function encryptPayload(
 export async function decryptPayload(
   encryptedPayload: Uint8Array,
   encryptedSymmetricKey: Uint8Array,
-  privateKey: CryptoKey
+  privateKey: CryptoKey,
 ): Promise<string> {
   // Create a new ArrayBuffer copy to ensure proper type
   const keyBuffer = new ArrayBuffer(encryptedSymmetricKey.byteLength);
@@ -78,22 +84,22 @@ export async function decryptPayload(
   // Decrypt the symmetric key using our private key (RSA-OAEP unwrap)
   const decryptedSymmetricKeyBuffer = await window.crypto.subtle.decrypt(
     {
-      name: 'RSA-OAEP',
+      name: "RSA-OAEP",
     },
     privateKey,
-    keyBuffer
+    keyBuffer,
   );
 
   // Import the symmetric key
   const symmetricKey = await window.crypto.subtle.importKey(
-    'raw',
+    "raw",
     decryptedSymmetricKeyBuffer,
     {
-      name: 'AES-GCM',
+      name: "AES-GCM",
       length: 256,
     },
     false,
-    ['decrypt']
+    ["decrypt"],
   );
 
   // Extract IV and encrypted data
@@ -108,11 +114,11 @@ export async function decryptPayload(
   // Decrypt the data
   const decryptedData = await window.crypto.subtle.decrypt(
     {
-      name: 'AES-GCM',
+      name: "AES-GCM",
       iv,
     },
     symmetricKey,
-    encryptedDataBuffer
+    encryptedDataBuffer,
   );
 
   const decoder = new TextDecoder();

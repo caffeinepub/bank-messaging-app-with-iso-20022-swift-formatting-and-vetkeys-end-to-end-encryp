@@ -15,19 +15,19 @@ export interface Iso20022Message {
 export function createEmptyIso20022Message(): Iso20022Message {
   const now = new Date();
   const dateTimeStr = now.toISOString().slice(0, 16);
-  
+
   return {
-    messageId: `MSG-${now.toISOString().slice(0, 10).replace(/-/g, '')}-001`,
+    messageId: `MSG-${now.toISOString().slice(0, 10).replace(/-/g, "")}-001`,
     creationDateTime: dateTimeStr,
-    instructionId: '',
-    endToEndId: '',
-    amount: '',
-    currency: 'USD',
-    debtorName: '',
-    debtorAccount: '',
-    creditorName: '',
-    creditorAccount: '',
-    remittanceInfo: '',
+    instructionId: "",
+    endToEndId: "",
+    amount: "",
+    currency: "USD",
+    debtorName: "",
+    debtorAccount: "",
+    creditorName: "",
+    creditorAccount: "",
+    remittanceInfo: "",
   };
 }
 
@@ -44,7 +44,7 @@ export function generateIso20022Raw(message: Iso20022Message): string {
     <PmtInf>
       <PmtInfId>${message.instructionId}</PmtInfId>
       <PmtMtd>TRF</PmtMtd>
-      <ReqdExctnDt>${message.creationDateTime.split('T')[0]}</ReqdExctnDt>
+      <ReqdExctnDt>${message.creationDateTime.split("T")[0]}</ReqdExctnDt>
       <Dbtr>
         <Nm>${message.debtorName}</Nm>
       </Dbtr>
@@ -81,28 +81,35 @@ export function generateIso20022Raw(message: Iso20022Message): string {
 export function parseIso20022Raw(raw: string): Iso20022Message | null {
   try {
     const parser = new DOMParser();
-    const doc = parser.parseFromString(raw, 'text/xml');
-    
+    const doc = parser.parseFromString(raw, "text/xml");
+
     const getValue = (tagName: string): string => {
       const element = doc.getElementsByTagName(tagName)[0];
-      return element?.textContent || '';
+      return element?.textContent || "";
     };
 
     return {
-      messageId: getValue('MsgId'),
-      creationDateTime: getValue('CreDtTm'),
-      instructionId: getValue('InstrId'),
-      endToEndId: getValue('EndToEndId'),
-      amount: getValue('InstdAmt'),
-      currency: doc.getElementsByTagName('InstdAmt')[0]?.getAttribute('Ccy') || 'USD',
-      debtorName: doc.getElementsByTagName('Dbtr')[0]?.getElementsByTagName('Nm')[0]?.textContent || '',
-      debtorAccount: getValue('IBAN'),
-      creditorName: doc.getElementsByTagName('Cdtr')[0]?.getElementsByTagName('Nm')[0]?.textContent || '',
-      creditorAccount: doc.getElementsByTagName('CdtrAcct')[0]?.getElementsByTagName('IBAN')[0]?.textContent || '',
-      remittanceInfo: getValue('Ustrd'),
+      messageId: getValue("MsgId"),
+      creationDateTime: getValue("CreDtTm"),
+      instructionId: getValue("InstrId"),
+      endToEndId: getValue("EndToEndId"),
+      amount: getValue("InstdAmt"),
+      currency:
+        doc.getElementsByTagName("InstdAmt")[0]?.getAttribute("Ccy") || "USD",
+      debtorName:
+        doc.getElementsByTagName("Dbtr")[0]?.getElementsByTagName("Nm")[0]
+          ?.textContent || "",
+      debtorAccount: getValue("IBAN"),
+      creditorName:
+        doc.getElementsByTagName("Cdtr")[0]?.getElementsByTagName("Nm")[0]
+          ?.textContent || "",
+      creditorAccount:
+        doc.getElementsByTagName("CdtrAcct")[0]?.getElementsByTagName("IBAN")[0]
+          ?.textContent || "",
+      remittanceInfo: getValue("Ustrd"),
     };
   } catch (error) {
-    console.error('Failed to parse ISO 20022 message:', error);
+    console.error("Failed to parse ISO 20022 message:", error);
     return null;
   }
 }

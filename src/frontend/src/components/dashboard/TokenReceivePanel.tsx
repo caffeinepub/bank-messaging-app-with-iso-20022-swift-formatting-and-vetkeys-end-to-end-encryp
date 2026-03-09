@@ -1,31 +1,34 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Copy, Check, AlertCircle } from 'lucide-react';
-import { toast } from 'sonner';
-import { getTokenGlyph } from '@/config/tokens';
+import { Button } from "@/components/ui/button";
+import { getTokenGlyph } from "@/config/tokens";
+import { AlertCircle, Check, Copy } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface TokenReceivePanelProps {
   tokenSymbol: string;
   receivingAddress: string;
 }
 
-export function TokenReceivePanel({ tokenSymbol, receivingAddress }: TokenReceivePanelProps) {
+export function TokenReceivePanel({
+  tokenSymbol,
+  receivingAddress,
+}: TokenReceivePanelProps) {
   const [copied, setCopied] = useState(false);
   const glyph = getTokenGlyph(tokenSymbol);
 
   const handleCopy = async () => {
     if (!receivingAddress) {
-      toast.error('No receiving address available');
+      toast.error("No receiving address available");
       return;
     }
 
     try {
       await navigator.clipboard.writeText(receivingAddress);
       setCopied(true);
-      toast.success('Address copied to clipboard');
+      toast.success("Address copied to clipboard");
       setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      toast.error('Failed to copy address');
+    } catch (_error) {
+      toast.error("Failed to copy address");
     }
   };
 
@@ -59,12 +62,17 @@ export function TokenReceivePanel({ tokenSymbol, receivingAddress }: TokenReceiv
             onClick={handleCopy}
             className="shrink-0"
           >
-            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copied ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        Share this address to receive {glyph} {tokenSymbol} tokens. This is your Internet Computer Principal.
+        Share this address to receive {glyph} {tokenSymbol} tokens. This is your
+        Internet Computer Principal.
       </p>
     </div>
   );

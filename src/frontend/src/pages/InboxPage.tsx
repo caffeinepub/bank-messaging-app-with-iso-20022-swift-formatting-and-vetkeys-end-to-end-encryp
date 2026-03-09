@@ -1,20 +1,33 @@
-import { useNavigate } from '@tanstack/react-router';
-import { useGetMessages } from '@/hooks/useQueries';
-import { useGetUserProfile } from '@/hooks/useProfiles';
-import { useInternetIdentity } from '@/hooks/useInternetIdentity';
-import { MessageType } from '@/backend';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Inbox, AlertCircle } from 'lucide-react';
+import { MessageType } from "@/backend";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useInternetIdentity } from "@/hooks/useInternetIdentity";
+import { useGetUserProfile } from "@/hooks/useProfiles";
+import { useGetMessages } from "@/hooks/useQueries";
+import { useNavigate } from "@tanstack/react-router";
+import { AlertCircle, Inbox } from "lucide-react";
 
 function MessageRow({ message }: { message: any }) {
   const navigate = useNavigate();
   const { identity } = useInternetIdentity();
   const { data: senderProfile } = useGetUserProfile(message.from);
   const { data: recipientProfile } = useGetUserProfile(message.to);
-  
+
   const currentPrincipal = identity?.getPrincipal().toString();
   const isReceived = message.to.toString() === currentPrincipal;
   const otherParty = isReceived ? message.from : message.to;
@@ -26,23 +39,29 @@ function MessageRow({ message }: { message: any }) {
   };
 
   const handleClick = () => {
-    navigate({ to: '/message/$messageId', params: { messageId: message.id.toString() } });
+    navigate({
+      to: "/message/$messageId",
+      params: { messageId: message.id.toString() },
+    });
   };
 
   return (
-    <TableRow className="cursor-pointer hover:bg-muted/50" onClick={handleClick}>
+    <TableRow
+      className="cursor-pointer hover:bg-muted/50"
+      onClick={handleClick}
+    >
       <TableCell>
-        <Badge variant={isReceived ? 'default' : 'secondary'}>
-          {isReceived ? 'Received' : 'Sent'}
+        <Badge variant={isReceived ? "default" : "secondary"}>
+          {isReceived ? "Received" : "Sent"}
         </Badge>
       </TableCell>
       <TableCell>
         <Badge variant="outline">
-          {message.messageType === MessageType.iso20022 ? 'ISO 20022' : 'SWIFT'}
+          {message.messageType === MessageType.iso20022 ? "ISO 20022" : "SWIFT"}
         </Badge>
       </TableCell>
       <TableCell className="font-medium">
-        {otherProfile?.name || otherParty.toString().slice(0, 20) + '...'}
+        {otherProfile?.name || `${otherParty.toString().slice(0, 20)}...`}
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">
         {formatDate(message.timestamp)}
@@ -75,7 +94,9 @@ export default function InboxPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading messages...</div>
+            <div className="text-center py-8 text-muted-foreground">
+              Loading messages...
+            </div>
           ) : messages.length === 0 ? (
             <Alert>
               <AlertCircle className="h-4 w-4" />

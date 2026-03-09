@@ -1,13 +1,19 @@
-import { RouterProvider, createRouter, createRoute, createRootRoute, Outlet } from '@tanstack/react-router';
-import { ThemeProvider } from 'next-themes';
-import { Toaster } from '@/components/ui/sonner';
-import AuthGate from './components/auth/AuthGate';
-import AppShell from './components/layout/AppShell';
-import DashboardPage from './pages/DashboardPage';
-import ContactsPage from './pages/ContactsPage';
-import ComposeMessagePage from './pages/ComposeMessagePage';
-import InboxPage from './pages/InboxPage';
-import MessageDetailPage from './pages/MessageDetailPage';
+import { Toaster } from "@/components/ui/sonner";
+import {
+  Outlet,
+  RouterProvider,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
+import { ThemeProvider } from "next-themes";
+import AuthGate from "./components/auth/AuthGate";
+import AppShell from "./components/layout/AppShell";
+import ComposeMessagePage from "./pages/ComposeMessagePage";
+import ContactsPage from "./pages/ContactsPage";
+import DashboardPage from "./pages/DashboardPage";
+import InboxPage from "./pages/InboxPage";
+import MessageDetailPage from "./pages/MessageDetailPage";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -21,31 +27,31 @@ const rootRoute = createRootRoute({
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/',
+  path: "/",
   component: DashboardPage,
 });
 
 const contactsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/contacts',
+  path: "/contacts",
   component: ContactsPage,
 });
 
 const composeRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/compose',
+  path: "/compose",
   component: ComposeMessagePage,
 });
 
 const inboxRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/inbox',
+  path: "/inbox",
   component: InboxPage,
 });
 
 const messageDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/message/$messageId',
+  path: "/message/$messageId",
   component: MessageDetailPage,
 });
 
@@ -59,7 +65,7 @@ const routeTree = rootRoute.addChildren([
 
 const router = createRouter({ routeTree });
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
   }
