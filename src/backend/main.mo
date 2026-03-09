@@ -89,6 +89,34 @@ actor {
     userProfiles.get(user);
   };
 
+  /// Get the public key of a mutually trusted contact.
+  /// Only works if both caller and the contact have added each other as trusted contacts.
+  /// This allows encrypting messages to trusted contacts without exposing full profile data.
+  public query ({ caller }) func getContactPublicKey(contact : Principal) : async ?Blob {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can fetch contact public keys");
+    };
+
+    // Both parties must trust each other
+    let callerTrustsContact = switch (trustedContacts.get(caller)) {
+      case (null) { false };
+      case (?contacts) { contacts.contains(contact) };
+    };
+    let contactTrustsCaller = switch (trustedContacts.get(contact)) {
+      case (null) { false };
+      case (?contacts) { contacts.contains(caller) };
+    };
+
+    if (not (callerTrustsContact and contactTrustsCaller)) {
+      Runtime.trap("Unauthorized: Can only fetch public key of mutually trusted contacts");
+    };
+
+    switch (userProfiles.get(contact)) {
+      case (null) { null };
+      case (?profile) { profile.publicKey };
+    };
+  };
+
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can save profiles");
@@ -277,4 +305,3 @@ actor {
     };
   };
 };
-

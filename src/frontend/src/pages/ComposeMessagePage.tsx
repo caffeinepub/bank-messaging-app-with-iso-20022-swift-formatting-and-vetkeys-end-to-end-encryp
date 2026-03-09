@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useGetUserProfile } from "@/hooks/useProfiles";
+import { useActor } from "@/hooks/useActor";
 import { useSendMessage } from "@/hooks/useQueries";
 import { useGetRelationshipStatus } from "@/hooks/useSyncStatus";
 import { useTransportKey } from "@/hooks/useTransportKey";
@@ -68,7 +68,6 @@ export default function ComposeMessagePage() {
   const [vetKeyFromUrl, setVetKeyFromUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    // Try to get vetKey from URL search params or session
     const urlVetKey =
       (search as any)?.vetKey || getPersistedUrlParameter("vetKey");
     setVetKeyFromUrl(urlVetKey);
@@ -77,20 +76,20 @@ export default function ComposeMessagePage() {
   const recipientPrincipal = selectedRecipient
     ? Principal.fromText(selectedRecipient)
     : null;
-  const { data: recipientProfile, refetch: refetchProfile } =
-    useGetUserProfile(recipientPrincipal);
+
   const {
     data: syncStatus,
     refetch: refetchSyncStatus,
     isLoading: syncStatusLoading,
   } = useGetRelationshipStatus(recipientPrincipal);
   const { keyPair, vetKey } = useTransportKey(vetKeyFromUrl);
+  const { actor } = useActor();
   const sendMessage = useSendMessage();
 
   const handleRefreshStatus = async () => {
     if (!recipientPrincipal) return;
     try {
-      await Promise.all([refetchProfile(), refetchSyncStatus()]);
+      await refetchSyncStatus();
       toast.success("Status refreshed");
     } catch (_error) {
       toast.error("Failed to refresh status");
@@ -155,19 +154,32 @@ export default function ComposeMessagePage() {
       return;
     }
 
-    if (!recipientProfile?.publicKey) {
-      toast.error(
-        "Recipient public key not available. Cannot encrypt message.",
-      );
-      return;
-    }
-
     if (!keyPair) {
       toast.error("Your transport key is not available on this device");
       return;
     }
 
+    if (!actor) {
+      toast.error("Backend connection not available");
+      return;
+    }
+
     try {
+      // Fetch the recipient's public key directly at send time using the
+      // dedicated getContactPublicKey function which is accessible to
+      // mutually trusted contacts (unlike getUserProfile which is restricted
+      // to own profile only).
+      const recipientPub = await actor.getContactPublicKey(
+        Principal.fromText(selectedRecipient),
+      );
+
+      if (!recipientPub) {
+        toast.error(
+          "Recipient public key not available. Ask them to open the app and load their key.",
+        );
+        return;
+      }
+
       // Generate plaintext message locally
       const plaintext =
         messageType === "iso20022"
@@ -175,10 +187,9 @@ export default function ComposeMessagePage() {
           : generateSwiftRaw(swiftData);
 
       // Encrypt using E2EE: AES-GCM for payload, RSA-OAEP for key wrapping
-      // The encryptedSymmetricKey is the per-message AES key wrapped with recipient's public key
       const { encryptedPayload, encryptedSymmetricKey } = await encryptPayload(
         plaintext,
-        recipientProfile.publicKey,
+        recipientPub,
       );
 
       const recipient = Principal.fromText(selectedRecipient);
@@ -250,7 +261,7 @@ export default function ComposeMessagePage() {
                   value={selectedRecipient}
                   onValueChange={setSelectedRecipient}
                 >
-                  <SelectTrigger id="recipient">
+                  <SelectTrigger id="recipient" data-ocid="compose.select">
                     <SelectValue placeholder="Select a contact" />
                   </SelectTrigger>
                   <SelectContent>
@@ -285,6 +296,7 @@ export default function ComposeMessagePage() {
                       onClick={handleRefreshStatus}
                       disabled={syncStatusLoading}
                       className="gap-2"
+                      data-ocid="compose.secondary_button"
                     >
                       <RefreshCw
                         className={`h-4 w-4 ${syncStatusLoading ? "animate-spin" : ""}`}
@@ -334,8 +346,12 @@ export default function ComposeMessagePage() {
                     }
                   >
                     <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="iso20022">ISO 20022</TabsTrigger>
-                      <TabsTrigger value="swift">SWIFT</TabsTrigger>
+                      <TabsTrigger value="iso20022" data-ocid="compose.tab.1">
+                        ISO 20022
+                      </TabsTrigger>
+                      <TabsTrigger value="swift" data-ocid="compose.tab.2">
+                        SWIFT
+                      </TabsTrigger>
                     </TabsList>
                     <TabsContent value="iso20022" className="mt-4">
                       <Iso20022Composer
@@ -359,6 +375,7 @@ export default function ComposeMessagePage() {
                   disabled={!canSend || sendMessage.isPending}
                   size="lg"
                   className="gap-2"
+                  data-ocid="compose.primary_button"
                 >
                   {sendMessage.isPending ? (
                     <>

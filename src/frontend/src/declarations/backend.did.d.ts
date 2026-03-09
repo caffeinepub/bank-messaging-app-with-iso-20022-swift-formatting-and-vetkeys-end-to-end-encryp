@@ -44,6 +44,11 @@ export interface _SERVICE {
   'getAllMessagesForCaller' : ActorMethod<[], Array<EncryptedMessage>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  /**
+   * Get the public key of a mutually trusted contact.
+   * Only works if both parties have added each other as trusted contacts.
+   */
+  'getContactPublicKey' : ActorMethod<[Principal], [] | [Uint8Array]>,
   'getMessageById' : ActorMethod<[bigint], EncryptedMessage>,
   /**
    * / Get the relationship status between the caller and another user.

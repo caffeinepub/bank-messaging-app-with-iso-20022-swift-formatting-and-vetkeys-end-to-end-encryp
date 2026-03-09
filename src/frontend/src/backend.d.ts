@@ -44,6 +44,11 @@ export interface backendInterface {
     getAllMessagesForCaller(): Promise<Array<EncryptedMessage>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    /**
+     * Get the public key of a mutually trusted contact.
+     * Only works if both parties have added each other as trusted contacts.
+     */
+    getContactPublicKey(contact: Principal): Promise<Uint8Array | null>;
     getMessageById(messageId: bigint): Promise<EncryptedMessage>;
     /**
      * / Get the relationship status between the caller and another user.

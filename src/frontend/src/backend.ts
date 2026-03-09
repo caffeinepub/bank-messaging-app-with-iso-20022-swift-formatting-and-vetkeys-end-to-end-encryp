@@ -127,6 +127,10 @@ export interface backendInterface {
     getAllMessagesForCaller(): Promise<Array<EncryptedMessage>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    /**
+     * Get the public key of a mutually trusted contact.
+     */
+    getContactPublicKey(contact: Principal): Promise<Uint8Array | null>;
     getMessageById(messageId: bigint): Promise<EncryptedMessage>;
     /**
      * / Get the relationship status between the caller and another user.
@@ -229,6 +233,21 @@ export class Backend implements backendInterface {
             return from_candid_UserRole_n12(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getContactPublicKey(arg0: Principal): Promise<Uint8Array | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getContactPublicKey(arg0);
+                return result.length === 0 ? null : result[0];
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getContactPublicKey(arg0);
+            return result.length === 0 ? null : result[0];
+        }
+    }
+
     async getMessageById(arg0: bigint): Promise<EncryptedMessage> {
         if (this.processError) {
             try {
