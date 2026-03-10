@@ -1,311 +1,531 @@
-import { TokenLedgerDiagnosticsPanel } from "@/components/dashboard/TokenLedgerDiagnosticsPanel";
-import { TokensSection } from "@/components/dashboard/TokensSection";
-import { TransportKeyDiagnosticsPanel } from "@/components/dashboard/TransportKeyDiagnosticsPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { useInternetIdentity } from "@/hooks/useInternetIdentity";
-import { useGetCallerUserProfile } from "@/hooks/useProfiles";
-import { useTransportKey } from "@/hooks/useTransportKey";
-import { useNavigate } from "@tanstack/react-router";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { HttpAgent } from "@icp-sdk/core/agent";
+import { Principal } from "@icp-sdk/core/principal";
 import {
-  Check,
+  AlertCircle,
+  CheckCircle2,
+  Coins,
   Copy,
-  ExternalLink,
   Key,
+  Loader2,
   RefreshCw,
-  Shield,
-  User,
+  Send,
 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { loadConfig } from "../config";
+import { useActor } from "../hooks/useActor";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useCallerProfile, useRelationshipStatus } from "../hooks/useQueries";
+import { loadOrGenerateKeyPair } from "../lib/crypto/transportKeys";
+import { generateVetKey, loadVetKey } from "../lib/crypto/vetKey";
+import {
+  TOKENS,
+  type TokenSymbol,
+  formatTokenAmount,
+  getBalance,
+  parseTokenAmount,
+  transfer,
+} from "../lib/icrc/icrcLedgerClient";
+
+interface TransportDiagnostics {
+  timestamp: string;
+  keyPairLoaded: boolean;
+  isRegistered: boolean;
+  isGenerating: boolean;
+  profileLoaded: boolean;
+  vetKeyPresent: boolean;
+  vetKey: string | null;
+  canSend: boolean;
+  disabledReason: string;
+}
 
 export default function DashboardPage() {
-  const navigate = useNavigate();
   const { identity } = useInternetIdentity();
-  const { data: userProfile, isFetched: profileFetched } =
-    useGetCallerUserProfile();
-  const { keyPair, isRegistered, isGenerating, generateAndRegister, vetKey } =
-    useTransportKey();
-  const [copiedPrincipal, setCopiedPrincipal] = useState(false);
-  const [copiedVetKey, setCopiedVetKey] = useState(false);
+  const { actor } = useActor();
+  const profileQuery = useCallerProfile();
 
-  const principal = identity?.getPrincipal().toString() || "";
+  const principal = identity?.getPrincipal().toString() ?? "";
 
-  const handleCopyPrincipal = async () => {
+  // Transport key state
+  const [transportDiag, setTransportDiag] =
+    useState<TransportDiagnostics | null>(null);
+  const [loadingKey, setLoadingKey] = useState(false);
+
+  // Token balances
+  const [balances, setBalances] = useState<Record<string, string | null>>({});
+  const [loadingBalances, setLoadingBalances] = useState(false);
+
+  // Token send
+  const [selectedToken, setSelectedToken] = useState<TokenSymbol>("ckUSDC");
+  const [sendTo, setSendTo] = useState("");
+  const [sendAmount, setSendAmount] = useState("");
+  const [sendStatus, setSendStatus] = useState<
+    | { state: "idle" }
+    | { state: "loading" }
+    | { state: "success"; blockIndex: string }
+    | { state: "error"; message: string }
+  >({ state: "idle" });
+
+  // Relationship diagnostics
+  const [checkPrincipal, setCheckPrincipal] = useState("");
+  const [parsedCheckPrincipal, setParsedCheckPrincipal] =
+    useState<Principal | null>(null);
+  const relationshipQuery = useRelationshipStatus(parsedCheckPrincipal);
+
+  const handleLoadTransportKey = useCallback(async () => {
+    setLoadingKey(true);
     try {
-      await navigator.clipboard.writeText(principal);
-      setCopiedPrincipal(true);
-      toast.success("Principal copied to clipboard");
-      setTimeout(() => setCopiedPrincipal(false), 2000);
-    } catch (_error) {
-      toast.error("Failed to copy principal");
-    }
-  };
+      const vetKey = generateVetKey(principal);
+      const keyPair = loadOrGenerateKeyPair();
+      const profile = profileQuery.data;
+      const hasProfile = !!profile;
 
-  const handleCopyVetKey = async () => {
-    if (!vetKey) {
-      toast.error("No vetKey available");
-      return;
+      // Update public key in profile if needed
+      if (actor && profile) {
+        const existingKey = profile.publicKey;
+        const newKey = keyPair.publicKey;
+        if (
+          !existingKey ||
+          existingKey.length !== newKey.length ||
+          !existingKey.every((b, i) => b === newKey[i])
+        ) {
+          await actor.saveCallerUserProfile({
+            name: profile.name,
+            publicKey: newKey,
+          });
+        }
+      }
+
+      setTransportDiag({
+        timestamp: new Date().toISOString(),
+        keyPairLoaded: true,
+        isRegistered: hasProfile,
+        isGenerating: false,
+        profileLoaded: hasProfile,
+        vetKeyPresent: true,
+        vetKey,
+        canSend: hasProfile,
+        disabledReason: hasProfile
+          ? "All checks passed - ready to send"
+          : "Profile not loaded",
+      });
+      toast.success("Transport key loaded");
+    } catch (err) {
+      toast.error("Failed to load transport key");
+      console.error(err);
+    } finally {
+      setLoadingKey(false);
     }
+  }, [principal, actor, profileQuery.data]);
+
+  const handleRefreshBalances = useCallback(async () => {
+    if (!identity || !principal) return;
+    setLoadingBalances(true);
     try {
-      await navigator.clipboard.writeText(vetKey);
-      setCopiedVetKey(true);
-      toast.success("VetKey copied to clipboard");
-      setTimeout(() => setCopiedVetKey(false), 2000);
-    } catch (_error) {
-      toast.error("Failed to copy vetKey");
-    }
-  };
+      const config = await loadConfig();
+      const agent = new HttpAgent({ host: config.backend_host, identity });
+      const callerPrincipal = identity.getPrincipal();
 
-  const handleGoToCompose = () => {
-    if (!vetKey) {
-      toast.error("No vetKey available. Generate a transport key first.");
-      return;
-    }
-    navigate({ to: "/compose", search: { vetKey } });
-  };
+      const results = await Promise.all(
+        TOKENS.map(async (token) => {
+          try {
+            const bal = await getBalance(
+              token.canisterId,
+              callerPrincipal,
+              agent,
+            );
+            return {
+              symbol: token.symbol,
+              balance: formatTokenAmount(bal, token.decimals),
+            };
+          } catch {
+            return { symbol: token.symbol, balance: "Error" };
+          }
+        }),
+      );
 
-  const handleCopyComposeLink = async () => {
-    if (!vetKey) {
-      toast.error("No vetKey available. Generate a transport key first.");
-      return;
+      const balanceMap: Record<string, string> = {};
+      for (const { symbol, balance } of results) {
+        balanceMap[symbol] = balance;
+      }
+      setBalances(balanceMap);
+    } catch {
+      toast.error("Failed to fetch balances");
+    } finally {
+      setLoadingBalances(false);
     }
+  }, [identity, principal]);
+
+  const handleSendToken = useCallback(async () => {
+    if (!identity || !sendTo || !sendAmount) return;
+    setSendStatus({ state: "loading" });
     try {
-      const composeUrl = `${window.location.origin}${window.location.pathname}#/compose?vetKey=${encodeURIComponent(vetKey)}`;
-      await navigator.clipboard.writeText(composeUrl);
-      toast.success("Compose link copied to clipboard");
-    } catch (_error) {
-      toast.error("Failed to copy compose link");
+      const recipientPrincipal = Principal.fromText(sendTo.trim());
+      const token = TOKENS.find((t) => t.symbol === selectedToken)!;
+      const rawAmount = parseTokenAmount(sendAmount, token.decimals);
+
+      const config = await loadConfig();
+      const agent = new HttpAgent({ host: config.backend_host, identity });
+
+      const blockIndex = await transfer(
+        token.canisterId,
+        recipientPrincipal,
+        rawAmount,
+        agent,
+      );
+      setSendStatus({ state: "success", blockIndex: blockIndex.toString() });
+      toast.success(`${selectedToken} sent! Block: ${blockIndex}`);
+      setSendTo("");
+      setSendAmount("");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Transfer failed";
+      setSendStatus({ state: "error", message });
+      toast.error(message);
+    }
+  }, [identity, sendTo, sendAmount, selectedToken]);
+
+  const handleCheckRelationship = () => {
+    try {
+      const p = Principal.fromText(checkPrincipal.trim());
+      setParsedCheckPrincipal(p);
+    } catch {
+      toast.error("Invalid principal format");
     }
   };
 
-  // Derive diagnostics state
-  const keyPairLoaded = !!keyPair;
-  const profileLoaded = profileFetched && !!userProfile;
+  const storedVetKey = loadVetKey(principal);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6 animate-fade-up">
+      {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">
-          Secure messaging system status and identity information
+        <h1 className="font-display text-2xl font-bold text-foreground">
+          Dashboard
+        </h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Manage your keys, balances, and connections
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <User className="h-5 w-5 text-primary" />
-              <CardTitle>Identity</CardTitle>
-            </div>
-            <CardDescription>Your profile and public address</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm font-medium mb-1">Name</p>
-              <p className="text-lg">{userProfile?.name || "Not set"}</p>
-            </div>
-            <Separator />
-            <div>
-              <p className="text-sm font-medium mb-2">
-                Public Address (Principal)
-              </p>
-              <div className="flex items-start gap-2">
-                <code className="flex-1 text-xs bg-muted p-2 rounded font-mono-code break-all">
-                  {principal}
-                </code>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopyPrincipal}
-                  className="shrink-0"
-                >
-                  {copiedPrincipal ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Share this address with others to allow them to add you as a
-                trusted contact
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Principal ID */}
+      <Card className="card-glow" data-ocid="dashboard.panel">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Your Principal ID
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <code className="font-mono text-xs text-primary bg-primary/5 px-3 py-2 rounded border border-primary/20 flex-1 truncate">
+              {principal}
+            </code>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-8 h-8 shrink-0"
+              onClick={() => {
+                void navigator.clipboard.writeText(principal);
+                toast.success("Copied!");
+              }}
+              data-ocid="dashboard.copy.button"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+          {profileQuery.data && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Profile:{" "}
+              <span className="text-foreground">{profileQuery.data.name}</span>
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Key className="h-5 w-5 text-primary" />
-                <CardTitle>Transport Key</CardTitle>
-              </div>
-              <CardDescription>
-                End-to-end encryption key status
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Registration Status</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {isRegistered
-                      ? "Your transport key is active"
-                      : "No transport key registered"}
-                  </p>
-                </div>
-                <Badge variant={isRegistered ? "default" : "secondary"}>
-                  {isRegistered ? "Active" : "Inactive"}
-                </Badge>
-              </div>
-              <Separator />
-              <div>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Transport keys enable secure end-to-end encryption. Your
-                  private key never leaves this device.
-                </p>
-                <Button
-                  onClick={generateAndRegister}
-                  disabled={isGenerating}
-                  variant="outline"
-                  className="w-full gap-2"
-                >
-                  <RefreshCw
-                    className={`h-4 w-4 ${isGenerating ? "animate-spin" : ""}`}
-                  />
-                  {isGenerating
-                    ? "Generating..."
-                    : isRegistered
-                      ? "Rotate Key"
-                      : "Generate Key"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <TransportKeyDiagnosticsPanel
-            keyPairLoaded={keyPairLoaded}
-            isRegistered={isRegistered}
-            isGenerating={isGenerating}
-            profileLoaded={profileLoaded}
-            vetKey={vetKey}
-          />
-        </div>
-      </div>
-
-      {vetKey && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Session Key Access</CardTitle>
-            <CardDescription>
-              Use your vetKey to access your transport key in the Compose page
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm font-medium mb-2">
-                VetKey (Session Identifier)
-              </p>
-              <div className="flex items-start gap-2">
-                <code className="flex-1 text-xs bg-muted p-2 rounded font-mono-code break-all">
-                  {vetKey}
-                </code>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopyVetKey}
-                  className="shrink-0"
-                >
-                  {copiedVetKey ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                This session key allows you to access your transport keypair
-                across tabs and page reloads
-              </p>
-            </div>
-            <Separator />
-            <div className="flex gap-2">
-              <Button onClick={handleGoToCompose} className="flex-1 gap-2">
-                <ExternalLink className="h-4 w-4" />
-                Go to Compose
-              </Button>
-              <Button
-                onClick={handleCopyComposeLink}
+      {/* Transport Key */}
+      <Card className="card-glow" data-ocid="transport_key.panel">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Key className="w-4 h-4 text-primary" />
+              Transport Key
+            </CardTitle>
+            {storedVetKey ? (
+              <Badge
                 variant="outline"
-                className="flex-1 gap-2"
+                className="text-xs border-primary/30 text-primary"
               >
-                <Copy className="h-4 w-4" />
-                Copy Compose Link
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <TokensSection principal={principal} />
-
-      <TokenLedgerDiagnosticsPanel />
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
-            <CardTitle>Security Information</CardTitle>
+                <CheckCircle2 className="w-3 h-3 mr-1" />
+                Loaded
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="text-xs text-muted-foreground"
+              >
+                <AlertCircle className="w-3 h-3 mr-1" />
+                Not loaded
+              </Badge>
+            )}
           </div>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div className="flex gap-3">
-            <div className="shrink-0 mt-0.5">
-              <div className="h-2 w-2 rounded-full bg-primary" />
-            </div>
-            <div>
-              <p className="font-medium">Device-Only Private Keys</p>
-              <p className="text-muted-foreground">
-                Your transport private key is generated on this device and never
-                transmitted to the backend or any other party.
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Load your transport key to enable sending encrypted messages. Keys
+            are generated and stored locally — they never leave this device.
+          </p>
+          <Button
+            onClick={() => void handleLoadTransportKey()}
+            disabled={loadingKey}
+            variant={storedVetKey ? "outline" : "default"}
+            size="sm"
+            data-ocid="transport_key.primary_button"
+          >
+            {loadingKey ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                Loading...
+              </>
+            ) : storedVetKey ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 mr-2" />
+                Refresh Key
+              </>
+            ) : (
+              <>
+                <Key className="w-3.5 h-3.5 mr-2" />
+                Load Transport Key
+              </>
+            )}
+          </Button>
+
+          {transportDiag && (
+            <div className="rounded-md border border-border bg-secondary/30 p-3">
+              <p className="text-xs font-mono text-muted-foreground mb-2">
+                Diagnostics
               </p>
+              <pre className="text-xs font-mono text-foreground/80 overflow-auto whitespace-pre-wrap">
+                {JSON.stringify(transportDiag, null, 2)}
+              </pre>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Token Balances */}
+      <Card className="card-glow" data-ocid="tokens.panel">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Coins className="w-4 h-4 text-accent" />
+              Token Balances
+            </CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void handleRefreshBalances()}
+              disabled={loadingBalances}
+              className="h-7 px-2 text-xs"
+              data-ocid="tokens.refresh.button"
+            >
+              {loadingBalances ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <>
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Refresh
+                </>
+              )}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-3">
+            {TOKENS.map((token) => (
+              <div
+                key={token.symbol}
+                className="p-3 rounded-md border border-border bg-secondary/20 space-y-1"
+                data-ocid={`tokens.${token.symbol.toLowerCase()}.card`}
+              >
+                <div className="font-mono text-xs font-bold text-primary">
+                  {token.symbol}
+                </div>
+                <div className="font-mono text-sm font-semibold text-foreground">
+                  {loadingBalances ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                  ) : balances[token.symbol] !== undefined ? (
+                    balances[token.symbol]
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Token Send */}
+      <Card className="card-glow" data-ocid="token_send.panel">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Send className="w-4 h-4 text-muted-foreground" />
+            Send Tokens
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Token</Label>
+              <Select
+                value={selectedToken}
+                onValueChange={(v) => setSelectedToken(v as TokenSymbol)}
+              >
+                <SelectTrigger className="h-9" data-ocid="token_send.select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TOKENS.map((t) => (
+                    <SelectItem key={t.symbol} value={t.symbol}>
+                      {t.symbol}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Amount</Label>
+              <Input
+                placeholder="0.00"
+                value={sendAmount}
+                onChange={(e) => setSendAmount(e.target.value)}
+                className="h-9 font-mono text-sm"
+                data-ocid="token_send.input"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Recipient Principal</Label>
+              <Input
+                placeholder="aaaaa-aa"
+                value={sendTo}
+                onChange={(e) => setSendTo(e.target.value)}
+                className="h-9 font-mono text-xs"
+                data-ocid="token_send.recipient.input"
+              />
             </div>
           </div>
-          <div className="flex gap-3">
-            <div className="shrink-0 mt-0.5">
-              <div className="h-2 w-2 rounded-full bg-primary" />
+
+          <Button
+            onClick={() => void handleSendToken()}
+            disabled={!sendTo || !sendAmount || sendStatus.state === "loading"}
+            size="sm"
+            data-ocid="token_send.submit_button"
+          >
+            {sendStatus.state === "loading" ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <Send className="w-3.5 h-3.5 mr-2" />
+                Send {selectedToken}
+              </>
+            )}
+          </Button>
+
+          {sendStatus.state === "success" && (
+            <div
+              className="text-xs text-primary font-mono bg-primary/5 border border-primary/20 rounded p-2"
+              data-ocid="token_send.success_state"
+            >
+              ✓ Sent successfully. Block index: {sendStatus.blockIndex}
             </div>
-            <div>
-              <p className="font-medium">End-to-End Encryption</p>
-              <p className="text-muted-foreground">
-                All message payloads are encrypted locally before sending and
-                decrypted only on the recipient's device.
-              </p>
+          )}
+          {sendStatus.state === "error" && (
+            <div
+              className="text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded p-2"
+              data-ocid="token_send.error_state"
+            >
+              {sendStatus.message}
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Relationship Check */}
+      <Card className="card-glow" data-ocid="relationship.panel">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium">
+            Check Relationship Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Enter principal ID"
+              value={checkPrincipal}
+              onChange={(e) => setCheckPrincipal(e.target.value)}
+              className="h-9 font-mono text-xs flex-1"
+              data-ocid="relationship.input"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCheckRelationship}
+              className="h-9 shrink-0"
+              data-ocid="relationship.primary_button"
+            >
+              Check
+            </Button>
           </div>
-          <div className="flex gap-3">
-            <div className="shrink-0 mt-0.5">
-              <div className="h-2 w-2 rounded-full bg-primary" />
+
+          {relationshipQuery.isLoading && (
+            <div
+              className="flex items-center gap-2 text-xs text-muted-foreground"
+              data-ocid="relationship.loading_state"
+            >
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Checking...
             </div>
-            <div>
-              <p className="font-medium">Permissioned Messaging</p>
-              <p className="text-muted-foreground">
-                You can only exchange messages with users you've added as
-                trusted contacts, and who have also added you.
-              </p>
+          )}
+
+          {relationshipQuery.data && (
+            <div className="rounded-md border border-border bg-secondary/30 p-3">
+              <pre className="text-xs font-mono text-foreground/80 overflow-auto whitespace-pre-wrap">
+                {JSON.stringify(
+                  {
+                    timestamp: new Date().toISOString(),
+                    ...relationshipQuery.data,
+                    canSend:
+                      relationshipQuery.data.callerHasPublicKey &&
+                      relationshipQuery.data.otherHasPublicKey &&
+                      relationshipQuery.data.isMutuallyTrusted,
+                    disabledReason: !relationshipQuery.data.callerHasPublicKey
+                      ? "Caller has no public key — load transport key"
+                      : !relationshipQuery.data.otherHasPublicKey
+                        ? "Contact has no public key"
+                        : !relationshipQuery.data.isMutuallyTrusted
+                          ? "Not mutually trusted"
+                          : "All checks passed - ready to send",
+                  },
+                  null,
+                  2,
+                )}
+              </pre>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

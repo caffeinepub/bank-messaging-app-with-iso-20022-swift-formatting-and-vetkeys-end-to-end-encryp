@@ -1,469 +1,228 @@
-import { MessageType } from "@/backend";
-import RawPreview from "@/components/messages/RawPreview";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useParams } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { useInternetIdentity } from "@/hooks/useInternetIdentity";
-import { useGetUserProfile } from "@/hooks/useProfiles";
-import { useGetMessageById } from "@/hooks/useQueries";
-import { useTransportKey } from "@/hooks/useTransportKey";
-import { decryptPayload } from "@/lib/crypto/e2ee";
-import {
-  type Iso20022Message,
-  parseIso20022Raw,
-} from "@/lib/messageFormats/iso20022";
-import { type SwiftMessage, parseSwiftRaw } from "@/lib/messageFormats/swift";
-import { useNavigate, useParams } from "@tanstack/react-router";
-import { AlertCircle, ArrowLeft, Lock, Unlock } from "lucide-react";
-import { useEffect, useState } from "react";
+  ArrowDownLeft,
+  ArrowLeft,
+  ArrowUpRight,
+  Loader2,
+  Lock,
+  Unlock,
+} from "lucide-react";
+import { useState } from "react";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useMessageById } from "../hooks/useQueries";
+import { decryptMessage, loadKeyPair } from "../lib/crypto/transportKeys";
+
+function formatDate(timestamp: bigint): string {
+  const ms = Number(timestamp / 1_000_000n);
+  return new Date(ms).toLocaleString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export default function MessageDetailPage() {
   const { messageId } = useParams({ from: "/message/$messageId" });
-  const navigate = useNavigate();
   const { identity } = useInternetIdentity();
-  const { keyPair } = useTransportKey();
-  const [decryptedContent, setDecryptedContent] = useState<string | null>(null);
+  const [decrypted, setDecrypted] = useState<string | null>(null);
   const [decryptError, setDecryptError] = useState<string | null>(null);
-  const [isDecrypting, setIsDecrypting] = useState(false);
 
-  // Convert messageId to BigInt for backend query
-  const messageIdBigInt = messageId ? BigInt(messageId) : null;
-  const {
-    data: message,
-    error: messageError,
-    isLoading: messageLoading,
-  } = useGetMessageById(messageIdBigInt);
+  const msgId = messageId ? BigInt(messageId) : null;
+  const messageQuery = useMessageById(msgId);
 
-  const { data: senderProfile } = useGetUserProfile(message?.from || null);
-  const { data: recipientProfile } = useGetUserProfile(message?.to || null);
+  const currentPrincipal = identity?.getPrincipal().toString() ?? "";
 
-  const currentPrincipal = identity?.getPrincipal().toString();
-  const isReceived = message?.to.toString() === currentPrincipal;
+  const handleDecrypt = () => {
+    const msg = messageQuery.data;
+    if (!msg) return;
 
-  useEffect(() => {
-    if (
-      message &&
-      keyPair &&
-      !decryptedContent &&
-      !decryptError &&
-      !isDecrypting
-    ) {
-      // Only attempt decryption for received messages
-      if (!isReceived) {
-        setDecryptError(
-          "You cannot decrypt sent messages. Only the recipient can decrypt messages.",
-        );
-        return;
-      }
-
-      setIsDecrypting(true);
-      decryptPayload(
-        message.encryptedPayload,
-        message.encryptedSymmetricKey,
-        keyPair.privateKey,
-      )
-        .then((plaintext) => {
-          setDecryptedContent(plaintext);
-          setDecryptError(null);
-        })
-        .catch((error) => {
-          console.error("Decryption failed:", error);
-          setDecryptError(
-            "Failed to decrypt message. Your private key may not match the encrypted key, or the message was not intended for you.",
-          );
-        })
-        .finally(() => {
-          setIsDecrypting(false);
-        });
+    const keyPair = loadKeyPair();
+    if (!keyPair) {
+      setDecryptError(
+        "Transport key not loaded. Go to the Dashboard and load your transport key first.",
+      );
+      return;
     }
-  }, [
-    message,
-    keyPair,
-    decryptedContent,
-    decryptError,
-    isDecrypting,
-    isReceived,
-  ]);
 
-  // Handle loading state
-  if (messageLoading) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>Loading message...</AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  // Handle authorization error
-  if (messageError) {
-    const errorMsg =
-      messageError instanceof Error
-        ? messageError.message
-        : String(messageError);
-    const isUnauthorized =
-      errorMsg.includes("Access denied") || errorMsg.includes("Not authorized");
-    const isNotFound =
-      errorMsg.includes("not found") || errorMsg.includes("Message not found");
-
-    return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {isUnauthorized
-              ? "You are not an authorized participant for this message. Only the sender and receiver can access this message."
-              : isNotFound
-                ? "Message not found. This message may have been deleted or the ID is incorrect."
-                : "An error occurred while loading the message."}
-          </AlertDescription>
-        </Alert>
-        <Button variant="outline" onClick={() => navigate({ to: "/inbox" })}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Inbox
-        </Button>
-      </div>
-    );
-  }
-
-  // Handle message not found (shouldn't happen with error handling above, but defensive)
-  if (!message) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>Message not found</AlertDescription>
-        </Alert>
-        <Button variant="outline" onClick={() => navigate({ to: "/inbox" })}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Inbox
-        </Button>
-      </div>
-    );
-  }
-
-  const formatDate = (timestamp: bigint) => {
-    const date = new Date(Number(timestamp) / 1000000);
-    return date.toLocaleString();
+    try {
+      const plaintext = decryptMessage(
+        msg.encryptedPayload,
+        msg.encryptedSymmetricKey,
+        keyPair.privateKey,
+      );
+      setDecrypted(plaintext);
+      setDecryptError(null);
+    } catch {
+      setDecryptError("Failed to decrypt message. The key may not match.");
+    }
   };
 
-  const parsedMessage: Iso20022Message | SwiftMessage | null = decryptedContent
-    ? message.messageType === MessageType.iso20022
-      ? parseIso20022Raw(decryptedContent)
-      : parseSwiftRaw(decryptedContent)
-    : null;
+  if (messageQuery.isLoading) {
+    return (
+      <div
+        className="flex items-center justify-center py-20"
+        data-ocid="message.loading_state"
+      >
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!messageQuery.data) {
+    return (
+      <div className="py-20 text-center" data-ocid="message.error_state">
+        <p className="text-muted-foreground">Message not found.</p>
+        <Link to="/inbox">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-4"
+            data-ocid="message.back.button"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Inbox
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const msg = messageQuery.data;
+  const isSent = msg.from.toString() === currentPrincipal;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Message Details
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {isReceived ? "Received" : "Sent"} message #{message.id.toString()}
-          </p>
-        </div>
-        <Button variant="outline" onClick={() => navigate({ to: "/inbox" })}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
+    <div className="space-y-6 animate-fade-up max-w-2xl">
+      {/* Back */}
+      <Link to="/inbox" data-ocid="message.back.link">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 px-2 text-muted-foreground"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 mr-1" />
           Back to Inbox
         </Button>
+      </Link>
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-xl font-bold text-foreground">
+            Message Detail
+          </h1>
+          <p className="text-xs font-mono text-muted-foreground mt-1">
+            ID: {msg.id.toString()}
+          </p>
+        </div>
+        {isSent ? (
+          <Badge
+            variant="outline"
+            className="text-xs border-muted-foreground/30 text-muted-foreground shrink-0"
+          >
+            <ArrowUpRight className="w-2.5 h-2.5 mr-1" />
+            Sent
+          </Badge>
+        ) : (
+          <Badge
+            variant="outline"
+            className="text-xs border-primary/30 text-primary shrink-0"
+          >
+            <ArrowDownLeft className="w-2.5 h-2.5 mr-1" />
+            Received
+          </Badge>
+        )}
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Message Information</CardTitle>
-            <div className="flex gap-2">
-              <Badge variant={isReceived ? "default" : "secondary"}>
-                {isReceived ? "Received" : "Sent"}
-              </Badge>
-              <Badge variant="outline">
-                {message.messageType === MessageType.iso20022
-                  ? "ISO 20022"
-                  : "SWIFT"}
-              </Badge>
-            </div>
+      {/* Metadata */}
+      <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+        <div className="grid sm:grid-cols-2 gap-3 text-sm">
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">From</p>
+            <p className="font-mono text-xs text-foreground break-all">
+              {msg.from.toString()}
+            </p>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Sender
-              </p>
-              <p className="text-sm font-mono">
-                {senderProfile?.name || message.from.toString()}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Receiver
-              </p>
-              <p className="text-sm font-mono">
-                {recipientProfile?.name || message.to.toString()}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Date</p>
-              <p className="text-sm">{formatDate(message.timestamp)}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Encryption Status
-              </p>
-              <div className="flex items-center gap-2 text-sm">
-                {decryptedContent ? (
-                  <>
-                    <Unlock className="h-4 w-4 text-green-600" />
-                    <span className="text-green-600">Decrypted</span>
-                  </>
-                ) : (
-                  <>
-                    <Lock className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Encrypted</span>
-                  </>
-                )}
-              </div>
-            </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">To</p>
+            <p className="font-mono text-xs text-foreground break-all">
+              {msg.to.toString()}
+            </p>
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Date</p>
+            <p className="text-xs text-foreground">
+              {formatDate(msg.timestamp)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Type</p>
+            <p className="font-mono text-xs text-foreground">
+              {msg.messageType}
+            </p>
+          </div>
+        </div>
+      </div>
 
-      {!keyPair && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Your transport key is not available on this device. You cannot
-            decrypt messages without your private key.
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Encrypted payload */}
+      <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-sm font-medium">Encrypted Message</span>
+          </div>
+          {!decrypted && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDecrypt}
+              className="h-7 px-3 text-xs"
+              data-ocid="message.primary_button"
+            >
+              <Unlock className="w-3 h-3 mr-1.5" />
+              Decrypt
+            </Button>
+          )}
+        </div>
 
-      {decryptError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{decryptError}</AlertDescription>
-        </Alert>
-      )}
+        <div className="font-mono text-xs text-muted-foreground/60 bg-secondary/30 rounded p-3 break-all">
+          {Array.from(msg.encryptedPayload)
+            .slice(0, 64)
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("")}
+          {msg.encryptedPayload.length > 64 ? "..." : ""}
+        </div>
 
-      {isDecrypting && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>Decrypting message...</AlertDescription>
-        </Alert>
-      )}
+        {decrypted !== null && (
+          <div
+            className="rounded-md border border-primary/20 bg-primary/5 p-4"
+            data-ocid="message.success_state"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Unlock className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs font-medium text-primary">
+                Decrypted
+              </span>
+            </div>
+            <p className="text-sm text-foreground whitespace-pre-wrap">
+              {decrypted}
+            </p>
+          </div>
+        )}
 
-      {decryptedContent && parsedMessage && (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Message Content</CardTitle>
-              <CardDescription>Decrypted message fields</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {message.messageType === MessageType.iso20022 ? (
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Message ID
-                    </p>
-                    <p className="text-sm">
-                      {(parsedMessage as Iso20022Message).messageId}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Creation Date/Time
-                    </p>
-                    <p className="text-sm">
-                      {(parsedMessage as Iso20022Message).creationDateTime}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Debtor Name
-                    </p>
-                    <p className="text-sm">
-                      {(parsedMessage as Iso20022Message).debtorName}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Debtor Account
-                    </p>
-                    <p className="text-sm font-mono">
-                      {(parsedMessage as Iso20022Message).debtorAccount}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Creditor Name
-                    </p>
-                    <p className="text-sm">
-                      {(parsedMessage as Iso20022Message).creditorName}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Creditor Account
-                    </p>
-                    <p className="text-sm font-mono">
-                      {(parsedMessage as Iso20022Message).creditorAccount}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Amount
-                    </p>
-                    <p className="text-sm">
-                      {(parsedMessage as Iso20022Message).amount}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Currency
-                    </p>
-                    <p className="text-sm">
-                      {(parsedMessage as Iso20022Message).currency}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Remittance Information
-                    </p>
-                    <p className="text-sm">
-                      {(parsedMessage as Iso20022Message).remittanceInfo}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Message Type
-                    </p>
-                    <p className="text-sm">
-                      {(parsedMessage as SwiftMessage).messageType}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Sender BIC
-                    </p>
-                    <p className="text-sm font-mono">
-                      {(parsedMessage as SwiftMessage).senderBIC}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Receiver BIC
-                    </p>
-                    <p className="text-sm font-mono">
-                      {(parsedMessage as SwiftMessage).receiverBIC}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Transaction Reference
-                    </p>
-                    <p className="text-sm">
-                      {(parsedMessage as SwiftMessage).transactionRef}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Value Date
-                    </p>
-                    <p className="text-sm">
-                      {(parsedMessage as SwiftMessage).valueDate}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Currency
-                    </p>
-                    <p className="text-sm">
-                      {(parsedMessage as SwiftMessage).currency}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Amount
-                    </p>
-                    <p className="text-sm">
-                      {(parsedMessage as SwiftMessage).amount}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Ordering Customer
-                    </p>
-                    <p className="text-sm">
-                      {(parsedMessage as SwiftMessage).orderingCustomer}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Beneficiary Customer
-                    </p>
-                    <p className="text-sm">
-                      {(parsedMessage as SwiftMessage).beneficiaryCustomer}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Remittance Information
-                    </p>
-                    <p className="text-sm">
-                      {(parsedMessage as SwiftMessage).remittanceInfo}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Raw Message</CardTitle>
-              <CardDescription>
-                Original decrypted message format
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RawPreview content={decryptedContent} />
-            </CardContent>
-          </Card>
-        </>
-      )}
+        {decryptError && (
+          <div
+            className="rounded-md border border-destructive/20 bg-destructive/5 p-3"
+            data-ocid="message.error_state"
+          >
+            <p className="text-xs text-destructive">{decryptError}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

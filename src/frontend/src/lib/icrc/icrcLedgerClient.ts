@@ -1,240 +1,125 @@
-import { getNetworkConfig } from "@/config/canisters";
-import { Actor, HttpAgent } from "@dfinity/agent";
-import { Principal } from "@dfinity/principal";
-import type { Identity } from "@icp-sdk/core/agent";
+import { Actor, type HttpAgent } from "@icp-sdk/core/agent";
+import type { Principal } from "@icp-sdk/core/principal";
 
-// ICRC-1 Ledger interface
-interface IcrcLedgerService {
-  icrc1_name: () => Promise<string>;
-  icrc1_symbol: () => Promise<string>;
-  icrc1_decimals: () => Promise<number>;
-  icrc1_fee: () => Promise<bigint>;
-  icrc1_metadata: () => Promise<
-    Array<
-      [string, { Nat?: bigint; Int?: bigint; Text?: string; Blob?: Uint8Array }]
-    >
-  >;
-  icrc1_balance_of: (account: {
-    owner: Principal;
-    subaccount: [] | [Uint8Array];
-  }) => Promise<bigint>;
-  icrc1_transfer: (args: TransferArg) => Promise<TransferResult>;
-}
-
-export interface IcrcLedgerMetadata {
-  name: string;
-  symbol: string;
-  decimals: number;
-  fee: bigint;
-}
-
-type Account = {
-  owner: Principal;
-  subaccount: [] | [Uint8Array];
-};
-
-type TransferArg = {
-  from_subaccount: [] | [Uint8Array];
-  to: Account;
-  fee: [] | [bigint];
-  created_at_time: [] | [bigint];
-  memo: [] | [Uint8Array];
-  amount: bigint;
-};
-
-type TransferError =
-  | { BadFee: { expected_fee: bigint } }
-  | { BadBurn: { min_burn_amount: bigint } }
-  | { InsufficientFunds: { balance: bigint } }
-  | { TooOld: null }
-  | { CreatedInFuture: { ledger_time: bigint } }
-  | { Duplicate: { duplicate_of: bigint } }
-  | { TemporarilyUnavailable: null }
-  | { GenericError: { error_code: bigint; message: string } };
-
-type TransferResult = { Ok: bigint } | { Err: TransferError };
-
-const idlFactory = ({ IDL }: any) => {
-  const Value = IDL.Variant({
-    Nat: IDL.Nat,
-    Int: IDL.Int,
-    Text: IDL.Text,
-    Blob: IDL.Vec(IDL.Nat8),
-  });
-
+// ICRC-1 IDL factory
+const icrc1IdlFactory = ({ IDL }: { IDL: any }) => {
   const Account = IDL.Record({
     owner: IDL.Principal,
     subaccount: IDL.Opt(IDL.Vec(IDL.Nat8)),
   });
-
-  const TransferArg = IDL.Record({
+  const TransferArgs = IDL.Record({
     from_subaccount: IDL.Opt(IDL.Vec(IDL.Nat8)),
     to: Account,
-    fee: IDL.Opt(IDL.Nat),
-    created_at_time: IDL.Opt(IDL.Nat64),
-    memo: IDL.Opt(IDL.Vec(IDL.Nat8)),
     amount: IDL.Nat,
+    fee: IDL.Opt(IDL.Nat),
+    memo: IDL.Opt(IDL.Vec(IDL.Nat8)),
+    created_at_time: IDL.Opt(IDL.Nat64),
   });
-
-  const TransferError = IDL.Variant({
-    BadFee: IDL.Record({ expected_fee: IDL.Nat }),
-    BadBurn: IDL.Record({ min_burn_amount: IDL.Nat }),
-    InsufficientFunds: IDL.Record({ balance: IDL.Nat }),
-    TooOld: IDL.Null,
-    CreatedInFuture: IDL.Record({ ledger_time: IDL.Nat64 }),
-    Duplicate: IDL.Record({ duplicate_of: IDL.Nat }),
-    TemporarilyUnavailable: IDL.Null,
-    GenericError: IDL.Record({ error_code: IDL.Nat, message: IDL.Text }),
-  });
-
   const TransferResult = IDL.Variant({
     Ok: IDL.Nat,
-    Err: TransferError,
+    Err: IDL.Text,
   });
-
   return IDL.Service({
-    icrc1_name: IDL.Func([], [IDL.Text], ["query"]),
-    icrc1_symbol: IDL.Func([], [IDL.Text], ["query"]),
-    icrc1_decimals: IDL.Func([], [IDL.Nat8], ["query"]),
-    icrc1_fee: IDL.Func([], [IDL.Nat], ["query"]),
-    icrc1_metadata: IDL.Func(
-      [],
-      [IDL.Vec(IDL.Tuple(IDL.Text, Value))],
-      ["query"],
-    ),
     icrc1_balance_of: IDL.Func([Account], [IDL.Nat], ["query"]),
-    icrc1_transfer: IDL.Func([TransferArg], [TransferResult], []),
+    icrc1_transfer: IDL.Func([TransferArgs], [TransferResult], []),
   });
 };
 
-/**
- * Creates an ICRC-1 ledger actor.
- */
-async function createIcrcLedgerActor(
-  ledgerCanisterId: string,
-  identity?: Identity,
-): Promise<IcrcLedgerService> {
-  const networkConfig = getNetworkConfig();
-  const host = networkConfig.host;
-
-  const agentOptions: any = { host };
-  if (identity) {
-    agentOptions.identity = identity;
-  }
-
-  const agent = new HttpAgent(agentOptions);
-
-  if (networkConfig.isLocal) {
-    await agent.fetchRootKey();
-  }
-
-  return Actor.createActor<IcrcLedgerService>(idlFactory, {
+function createIcrcActor(canisterId: string, agent: HttpAgent) {
+  return Actor.createActor(icrc1IdlFactory, {
     agent,
-    canisterId: Principal.fromText(ledgerCanisterId),
+    canisterId,
+  }) as {
+    icrc1_balance_of: (account: {
+      owner: Principal;
+      subaccount: [] | [Uint8Array];
+    }) => Promise<bigint>;
+    icrc1_transfer: (args: {
+      from_subaccount: [] | [Uint8Array];
+      to: { owner: Principal; subaccount: [] | [Uint8Array] };
+      amount: bigint;
+      fee: [] | [bigint];
+      memo: [] | [Uint8Array];
+      created_at_time: [] | [bigint];
+    }) => Promise<{ Ok: bigint } | { Err: string }>;
+  };
+}
+
+export async function getBalance(
+  canisterId: string,
+  principal: Principal,
+  agent: HttpAgent,
+): Promise<bigint> {
+  const actor = createIcrcActor(canisterId, agent);
+  return actor.icrc1_balance_of({
+    owner: principal,
+    subaccount: [],
   });
 }
 
-/**
- * Fetches the ICRC-1 balance for a given principal.
- */
-export async function fetchIcrcBalance(
-  ledgerCanisterId: string,
-  principalText: string,
-): Promise<
-  { success: true; balance: bigint } | { success: false; error: string }
-> {
-  try {
-    const actor = await createIcrcLedgerActor(ledgerCanisterId);
-    const owner = Principal.fromText(principalText);
-    const balance = await actor.icrc1_balance_of({ owner, subaccount: [] });
-    return { success: true, balance };
-  } catch (error: any) {
-    return { success: false, error: error?.message || String(error) };
+export async function transfer(
+  canisterId: string,
+  to: Principal,
+  amount: bigint,
+  agent: HttpAgent,
+): Promise<bigint> {
+  const actor = createIcrcActor(canisterId, agent);
+  const result = await actor.icrc1_transfer({
+    from_subaccount: [],
+    to: { owner: to, subaccount: [] },
+    amount,
+    fee: [],
+    memo: [],
+    created_at_time: [],
+  });
+
+  if ("Ok" in result) {
+    return result.Ok;
   }
+  throw new Error(`Transfer failed: ${result.Err}`);
 }
 
-/**
- * Fetches read-only metadata from an ICRC-1 ledger canister.
- */
-export async function fetchIcrcLedgerMetadata(
-  ledgerCanisterId: string,
-): Promise<
-  | { success: true; metadata: IcrcLedgerMetadata }
-  | { success: false; error: string }
-> {
-  try {
-    const actor = await createIcrcLedgerActor(ledgerCanisterId);
+// Token config
+export const TOKENS = [
+  {
+    symbol: "ckBTC",
+    name: "Chain-Key Bitcoin",
+    canisterId: "mxzaz-hqaaa-aaaar-qaada-cai",
+    decimals: 8,
+    color: "oklch(0.72 0.18 60)",
+  },
+  {
+    symbol: "ckETH",
+    name: "Chain-Key Ether",
+    canisterId: "ss2fx-dyaaa-aaaar-qacoq-cai",
+    decimals: 18,
+    color: "oklch(0.68 0.19 195)",
+  },
+  {
+    symbol: "ckUSDC",
+    name: "Chain-Key USDC",
+    canisterId: "xevnm-gaaaa-aaaar-qafnq-cai",
+    decimals: 6,
+    color: "oklch(0.74 0.22 142)",
+  },
+] as const;
 
-    const [name, symbol, decimals, fee] = await Promise.all([
-      actor.icrc1_name(),
-      actor.icrc1_symbol(),
-      actor.icrc1_decimals(),
-      actor.icrc1_fee(),
-    ]);
+export type TokenSymbol = (typeof TOKENS)[number]["symbol"];
 
-    return {
-      success: true,
-      metadata: { name, symbol, decimals, fee },
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error?.message || String(error),
-    };
-  }
+export function formatTokenAmount(amount: bigint, decimals: number): string {
+  const divisor = BigInt(10 ** decimals);
+  const whole = amount / divisor;
+  const fraction = amount % divisor;
+  const fractionStr = fraction.toString().padStart(decimals, "0");
+  // Show up to 6 significant decimal places
+  const trimmed = fractionStr.replace(/0+$/, "").slice(0, 6);
+  return trimmed ? `${whole}.${trimmed}` : `${whole}`;
 }
 
-function formatTransferError(err: TransferError): string {
-  if ("BadFee" in err)
-    return `Bad fee. Expected fee: ${err.BadFee.expected_fee}`;
-  if ("BadBurn" in err)
-    return `Bad burn. Min burn amount: ${err.BadBurn.min_burn_amount}`;
-  if ("InsufficientFunds" in err)
-    return `Insufficient funds. Balance: ${err.InsufficientFunds.balance}`;
-  if ("TooOld" in err) return "Transaction too old";
-  if ("CreatedInFuture" in err) return "Transaction created in the future";
-  if ("Duplicate" in err)
-    return `Duplicate transaction (block ${err.Duplicate.duplicate_of})`;
-  if ("TemporarilyUnavailable" in err) return "Ledger temporarily unavailable";
-  if ("GenericError" in err)
-    return `Error: ${err.GenericError.message} (code ${err.GenericError.error_code})`;
-  return "Unknown transfer error";
-}
-
-export interface Icrc1TransferParams {
-  ledgerCanisterId: string;
-  identity: Identity;
-  to: string;
-  amount: number;
-  decimals: number;
-}
-
-export async function icrc1Transfer(
-  params: Icrc1TransferParams,
-): Promise<
-  { success: true; blockIndex: bigint } | { success: false; error: string }
-> {
-  const { ledgerCanisterId, identity, to, amount, decimals } = params;
-  try {
-    const recipientPrincipal = Principal.fromText(to);
-    const scaledAmount = BigInt(Math.round(amount * 10 ** decimals));
-
-    const actor = await createIcrcLedgerActor(ledgerCanisterId, identity);
-
-    const result = await actor.icrc1_transfer({
-      from_subaccount: [],
-      to: { owner: recipientPrincipal, subaccount: [] },
-      fee: [],
-      created_at_time: [],
-      memo: [],
-      amount: scaledAmount,
-    });
-
-    if ("Ok" in result) {
-      return { success: true, blockIndex: result.Ok };
-    }
-    return { success: false, error: formatTransferError(result.Err) };
-  } catch (error: any) {
-    return { success: false, error: error?.message || String(error) };
-  }
+export function parseTokenAmount(value: string, decimals: number): bigint {
+  const [whole, frac = ""] = value.split(".");
+  const fracPadded = frac.padEnd(decimals, "0").slice(0, decimals);
+  return (
+    BigInt(whole || "0") * BigInt(10 ** decimals) + BigInt(fracPadded || "0")
+  );
 }

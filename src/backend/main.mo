@@ -7,10 +7,8 @@ import Blob "mo:core/Blob";
 import Time "mo:core/Time";
 import Principal "mo:core/Principal";
 
-
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
-
 
 actor {
   type EncryptedMessage = {
@@ -35,13 +33,6 @@ actor {
   };
 
   type EncryptedKeyBytes = Blob;
-
-  type EncryptedMessagingState = {
-    messages : Map.Map<Nat, EncryptedMessage>;
-    trustedContacts : Map.Map<Principal, Set.Set<Principal>>;
-    userProfiles : Map.Map<Principal, UserProfile>;
-    nextMessageId : Nat;
-  };
 
   let messages = Map.empty<Nat, EncryptedMessage>();
   var nextMessageId = 0;
@@ -79,12 +70,8 @@ actor {
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view profiles");
-    };
-    // Users can only view their own profile unless they are admin
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view user profiles");
     };
     userProfiles.get(user);
   };
@@ -267,6 +254,10 @@ actor {
 
   // Fetch a single message by id for authorized caller.
   public query ({ caller }) func getMessageById(messageId : Nat) : async EncryptedMessage {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can retrieve messages");
+    };
+
     let message = switch (messages.get(messageId)) {
       case (null) { Runtime.trap("Message not found") };
       case (?m) { m };
@@ -305,3 +296,4 @@ actor {
     };
   };
 };
+

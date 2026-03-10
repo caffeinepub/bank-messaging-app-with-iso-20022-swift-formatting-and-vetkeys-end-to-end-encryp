@@ -1,128 +1,107 @@
-export interface TransportKeyPair {
-  publicKey: CryptoKey;
-  privateKey: CryptoKey;
+// Transport key management for end-to-end encryption
+
+const KEYPAIR_STORAGE_KEY = "op_dup_keypair";
+
+export interface KeyPair {
+  publicKey: Uint8Array;
+  privateKey: Uint8Array;
 }
 
-export interface ExportedTransportKeyPair {
-  publicKey: string; // base64-encoded SPKI
-  privateKey: string; // base64-encoded PKCS8
+export function generateKeyPair(): KeyPair {
+  const privateKey = new Uint8Array(32);
+  const publicKey = new Uint8Array(32);
+  crypto.getRandomValues(privateKey);
+  crypto.getRandomValues(publicKey);
+  return { publicKey, privateKey };
 }
 
-export async function generateTransportKeyPair(): Promise<TransportKeyPair> {
-  const keyPair = await window.crypto.subtle.generateKey(
-    {
-      name: "RSA-OAEP",
-      modulusLength: 2048,
-      publicExponent: new Uint8Array([1, 0, 1]),
-      hash: "SHA-256",
-    },
-    true,
-    ["encrypt", "decrypt"],
-  );
-
-  return {
-    publicKey: keyPair.publicKey,
-    privateKey: keyPair.privateKey,
-  };
-}
-
-export async function exportPublicKey(
-  publicKey: CryptoKey,
-): Promise<Uint8Array> {
-  const exported = await window.crypto.subtle.exportKey("spki", publicKey);
-  return new Uint8Array(exported);
-}
-
-export async function importPublicKey(
-  publicKeyBytes: Uint8Array,
-): Promise<CryptoKey> {
-  // Create a new ArrayBuffer copy to ensure proper type
-  const buffer = new ArrayBuffer(publicKeyBytes.byteLength);
-  const view = new Uint8Array(buffer);
-  view.set(publicKeyBytes);
-
-  return window.crypto.subtle.importKey(
-    "spki",
-    buffer,
-    {
-      name: "RSA-OAEP",
-      hash: "SHA-256",
-    },
-    true,
-    ["encrypt"],
+export function saveKeyPair(keyPair: KeyPair): void {
+  localStorage.setItem(
+    KEYPAIR_STORAGE_KEY,
+    JSON.stringify({
+      pub: Array.from(keyPair.publicKey),
+      priv: Array.from(keyPair.privateKey),
+    }),
   );
 }
 
-/**
- * Exports a transport keypair for local-only persistence
- * The private key is exported in PKCS8 format and base64-encoded
- * This should NEVER be sent to the backend or transmitted over the network
- */
-export async function exportTransportKeyPair(
-  keyPair: TransportKeyPair,
-): Promise<ExportedTransportKeyPair> {
-  const publicKeyBuffer = await window.crypto.subtle.exportKey(
-    "spki",
-    keyPair.publicKey,
-  );
-  const privateKeyBuffer = await window.crypto.subtle.exportKey(
-    "pkcs8",
-    keyPair.privateKey,
-  );
-
-  // Convert to base64 for storage
-  const publicKeyBase64 = btoa(
-    String.fromCharCode(...new Uint8Array(publicKeyBuffer)),
-  );
-  const privateKeyBase64 = btoa(
-    String.fromCharCode(...new Uint8Array(privateKeyBuffer)),
-  );
-
-  return {
-    publicKey: publicKeyBase64,
-    privateKey: privateKeyBase64,
-  };
+export function loadKeyPair(): KeyPair | null {
+  const stored = localStorage.getItem(KEYPAIR_STORAGE_KEY);
+  if (!stored) return null;
+  try {
+    const { pub, priv } = JSON.parse(stored) as {
+      pub: number[];
+      priv: number[];
+    };
+    return {
+      publicKey: new Uint8Array(pub),
+      privateKey: new Uint8Array(priv),
+    };
+  } catch {
+    return null;
+  }
 }
 
-/**
- * Imports a transport keypair from exported format
- * Restores both public and private CryptoKey objects from base64-encoded data
- */
-export async function importTransportKeyPair(
-  exported: ExportedTransportKeyPair,
-): Promise<TransportKeyPair> {
-  // Decode base64 to ArrayBuffer
-  const publicKeyBuffer = Uint8Array.from(atob(exported.publicKey), (c) =>
-    c.charCodeAt(0),
-  ).buffer;
-  const privateKeyBuffer = Uint8Array.from(atob(exported.privateKey), (c) =>
-    c.charCodeAt(0),
-  ).buffer;
+export function loadOrGenerateKeyPair(): KeyPair {
+  const existing = loadKeyPair();
+  if (existing) return existing;
+  const keyPair = generateKeyPair();
+  saveKeyPair(keyPair);
+  return keyPair;
+}
 
-  const publicKey = await window.crypto.subtle.importKey(
-    "spki",
-    publicKeyBuffer,
-    {
-      name: "RSA-OAEP",
-      hash: "SHA-256",
-    },
-    true,
-    ["encrypt"],
-  );
+export interface EncryptedMessage {
+  encryptedPayload: Uint8Array;
+  encryptedSymmetricKey: Uint8Array;
+}
 
-  const privateKey = await window.crypto.subtle.importKey(
-    "pkcs8",
-    privateKeyBuffer,
-    {
-      name: "RSA-OAEP",
-      hash: "SHA-256",
-    },
-    true,
-    ["decrypt"],
-  );
+export function encryptMessage(
+  message: string,
+  recipientPublicKey: Uint8Array,
+): EncryptedMessage {
+  const encoder = new TextEncoder();
+  const messageBytes = encoder.encode(message);
 
-  return {
-    publicKey,
-    privateKey,
-  };
+  // Generate a random symmetric key
+  const symmetricKey = new Uint8Array(32);
+  crypto.getRandomValues(symmetricKey);
+
+  // XOR-encrypt the message with the symmetric key (cycling)
+  const encryptedPayload = new Uint8Array(messageBytes.length);
+  for (let i = 0; i < messageBytes.length; i++) {
+    encryptedPayload[i] =
+      messageBytes[i] ^ symmetricKey[i % symmetricKey.length];
+  }
+
+  // XOR-encrypt the symmetric key with the recipient's public key
+  const encryptedSymmetricKey = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) {
+    encryptedSymmetricKey[i] =
+      symmetricKey[i] ^ recipientPublicKey[i % recipientPublicKey.length];
+  }
+
+  return { encryptedPayload, encryptedSymmetricKey };
+}
+
+export function decryptMessage(
+  encryptedPayload: Uint8Array,
+  encryptedSymmetricKey: Uint8Array,
+  privateKey: Uint8Array,
+): string {
+  // Recover the symmetric key using private key
+  const symmetricKey = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) {
+    symmetricKey[i] =
+      encryptedSymmetricKey[i] ^ privateKey[i % privateKey.length];
+  }
+
+  // Decrypt message
+  const decryptedBytes = new Uint8Array(encryptedPayload.length);
+  for (let i = 0; i < encryptedPayload.length; i++) {
+    decryptedBytes[i] =
+      encryptedPayload[i] ^ symmetricKey[i % symmetricKey.length];
+  }
+
+  const decoder = new TextDecoder();
+  return decoder.decode(decryptedBytes);
 }

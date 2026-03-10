@@ -51,7 +51,11 @@ export const idlService = IDL.Service({
     ),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-  'getContactPublicKey' : IDL.Func([IDL.Principal], [IDL.Opt(IDL.Vec(IDL.Nat8))], ['query']),
+  'getContactPublicKey' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(IDL.Vec(IDL.Nat8))],
+      ['query'],
+    ),
   'getMessageById' : IDL.Func([IDL.Nat], [EncryptedMessage], ['query']),
   'getRelationshipStatus' : IDL.Func([IDL.Principal], [SyncStatus], ['query']),
   'getTrustedContacts' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
@@ -117,7 +121,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-    'getContactPublicKey' : IDL.Func([IDL.Principal], [IDL.Opt(IDL.Vec(IDL.Nat8))], ['query']),
+    'getContactPublicKey' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(IDL.Vec(IDL.Nat8))],
+        ['query'],
+      ),
     'getMessageById' : IDL.Func([IDL.Nat], [EncryptedMessage], ['query']),
     'getRelationshipStatus' : IDL.Func(
         [IDL.Principal],

@@ -45,8 +45,9 @@ export interface _SERVICE {
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   /**
-   * Get the public key of a mutually trusted contact.
-   * Only works if both parties have added each other as trusted contacts.
+   * / Get the public key of a mutually trusted contact.
+   * / Only works if both caller and the contact have added each other as trusted contacts.
+   * / This allows encrypting messages to trusted contacts without exposing full profile data.
    */
   'getContactPublicKey' : ActorMethod<[Principal], [] | [Uint8Array]>,
   'getMessageById' : ActorMethod<[bigint], EncryptedMessage>,

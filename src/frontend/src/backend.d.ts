@@ -45,8 +45,9 @@ export interface backendInterface {
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     /**
-     * Get the public key of a mutually trusted contact.
-     * Only works if both parties have added each other as trusted contacts.
+     * / Get the public key of a mutually trusted contact.
+     * / Only works if both caller and the contact have added each other as trusted contacts.
+     * / This allows encrypting messages to trusted contacts without exposing full profile data.
      */
     getContactPublicKey(contact: Principal): Promise<Uint8Array | null>;
     getMessageById(messageId: bigint): Promise<EncryptedMessage>;

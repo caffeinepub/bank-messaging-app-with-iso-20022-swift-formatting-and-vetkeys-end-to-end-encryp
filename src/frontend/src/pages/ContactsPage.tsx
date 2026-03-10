@@ -1,15 +1,17 @@
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -18,264 +20,255 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useGetUserProfile } from "@/hooks/useProfiles";
-import { useGetRelationshipStatus } from "@/hooks/useSyncStatus";
+import { Principal } from "@icp-sdk/core/principal";
 import {
-  useAddTrustedContact,
-  useGetTrustedContacts,
-  useRemoveTrustedContact,
-} from "@/hooks/useTrustedContacts";
-import { Principal } from "@dfinity/principal";
-import {
-  AlertCircle,
   CheckCircle2,
-  RefreshCw,
+  Clock,
+  Loader2,
   Trash2,
   UserPlus,
-  XCircle,
+  Users,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import {
+  useAddTrustedContact,
+  useContactProfile,
+  useRelationshipStatus,
+  useRemoveTrustedContact,
+  useTrustedContacts,
+} from "../hooks/useQueries";
 
-function ContactRow({ principal }: { principal: Principal }) {
-  const { data: profile } = useGetUserProfile(principal);
-  const {
-    data: syncStatus,
-    refetch: refetchStatus,
-    isLoading: statusLoading,
-  } = useGetRelationshipStatus(principal);
-  const removeTrustedContact = useRemoveTrustedContact();
+function ContactRow({
+  principal,
+  index,
+  onRemove,
+}: {
+  principal: Principal;
+  index: number;
+  onRemove: (p: Principal) => void;
+}) {
+  const profileQuery = useContactProfile(principal);
+  const statusQuery = useRelationshipStatus(principal);
+  const principalStr = principal.toString();
+  const short = `${principalStr.slice(0, 10)}...${principalStr.slice(-4)}`;
 
-  const handleRemove = async () => {
-    try {
-      await removeTrustedContact.mutateAsync(principal);
-      toast.success("Contact removed");
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to remove contact";
-      toast.error(message);
-    }
-  };
-
-  const handleRefresh = async () => {
-    try {
-      await refetchStatus();
-      toast.success("Status refreshed");
-    } catch (_error) {
-      toast.error("Failed to refresh status");
-    }
-  };
-
-  const getReadinessInfo = () => {
-    if (!syncStatus) return { ready: false, hint: "Unable to check status" };
-
-    if (!syncStatus.callerHasPublicKey) {
-      return {
-        ready: false,
-        hint: "You need to register a transport key in Dashboard",
-      };
-    }
-
-    if (!syncStatus.otherHasPublicKey) {
-      return {
-        ready: false,
-        hint: "They need to register a transport key",
-      };
-    }
-
-    if (!syncStatus.otherTrustsCaller) {
-      return {
-        ready: false,
-        hint: "They need to add you back as a trusted contact",
-      };
-    }
-
-    return {
-      ready: true,
-      hint: "Ready to exchange messages",
-    };
-  };
-
-  const readinessInfo = getReadinessInfo();
+  const isMutual = statusQuery.data?.isMutuallyTrusted ?? false;
+  const hasPubKey = statusQuery.data?.otherHasPublicKey ?? false;
 
   return (
-    <TableRow>
-      <TableCell className="font-medium">
-        {profile?.name || "Unknown"}
-      </TableCell>
-      <TableCell className="font-mono text-xs">
-        {principal.toString()}
+    <TableRow data-ocid={`contacts.item.${index}`}>
+      <TableCell>
+        <div className="font-medium text-sm">
+          {profileQuery.data?.name ?? (
+            <span className="text-muted-foreground italic">Unknown</span>
+          )}
+        </div>
+        <div className="font-mono text-xs text-muted-foreground mt-0.5">
+          {short}
+        </div>
       </TableCell>
       <TableCell>
-        <div className="flex items-center gap-2">
-          {statusLoading ? (
-            <Badge variant="outline" className="gap-1">
-              <RefreshCw className="h-3 w-3 animate-spin" />
-              Checking...
-            </Badge>
-          ) : readinessInfo.ready ? (
+        <div className="flex flex-col gap-1">
+          {isMutual ? (
             <Badge
-              variant="default"
-              className="gap-1 bg-success text-success-foreground"
+              variant="outline"
+              className="text-xs w-fit border-primary/30 text-primary"
             >
-              <CheckCircle2 className="h-3 w-3" />
-              Ready
+              <CheckCircle2 className="w-2.5 h-2.5 mr-1" />
+              Mutual
             </Badge>
           ) : (
-            <Badge variant="destructive" className="gap-1">
-              <XCircle className="h-3 w-3" />
-              Not ready
+            <Badge
+              variant="outline"
+              className="text-xs w-fit text-muted-foreground"
+            >
+              <Clock className="w-2.5 h-2.5 mr-1" />
+              Pending
+            </Badge>
+          )}
+          {hasPubKey && (
+            <Badge
+              variant="outline"
+              className="text-xs w-fit border-accent/30 text-accent"
+            >
+              Key ✓
             </Badge>
           )}
         </div>
       </TableCell>
-      <TableCell className="text-sm text-muted-foreground">
-        {readinessInfo.hint}
-      </TableCell>
       <TableCell className="text-right">
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={statusLoading}
-            title="Refresh status"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${statusLoading ? "animate-spin" : ""}`}
-            />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRemove}
-            disabled={removeTrustedContact.isPending}
-            title="Remove contact"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-7 h-7 text-muted-foreground hover:text-destructive"
+              data-ocid={`contacts.delete_button.${index}`}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent data-ocid="contacts.dialog">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Contact</AlertDialogTitle>
+              <AlertDialogDescription>
+                Remove <span className="font-mono text-xs">{short}</span> from
+                your trusted contacts? You will no longer be able to send each
+                other messages.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-ocid="contacts.cancel_button">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => onRemove(principal)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-ocid="contacts.confirm_button"
+              >
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </TableCell>
     </TableRow>
   );
 }
 
 export default function ContactsPage() {
-  const [principalInput, setPrincipalInput] = useState("");
-  const { data: contacts = [] } = useGetTrustedContacts();
-  const addTrustedContact = useAddTrustedContact();
+  const { identity } = useInternetIdentity();
+  const contactsQuery = useTrustedContacts();
+  const addContact = useAddTrustedContact();
+  const removeContact = useRemoveTrustedContact();
+  const [newPrincipal, setNewPrincipal] = useState("");
 
-  const handleAddContact = async (e: React.FormEvent) => {
+  const currentPrincipal = identity?.getPrincipal().toString() ?? "";
+
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    const text = newPrincipal.trim();
+    if (!text) return;
 
-    if (!principalInput.trim()) {
-      toast.error("Please enter a principal address");
+    if (text === currentPrincipal) {
+      toast.error("You cannot add yourself as a contact");
       return;
     }
 
     try {
-      const principal = Principal.fromText(principalInput.trim());
-      await addTrustedContact.mutateAsync(principal);
-      toast.success("Contact added successfully");
-      setPrincipalInput("");
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to add contact";
-      toast.error(message);
+      const principal = Principal.fromText(text);
+      await addContact.mutateAsync(principal);
+      setNewPrincipal("");
+      toast.success("Contact added");
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Invalid principal or failed to add",
+      );
     }
   };
 
+  const handleRemove = async (principal: Principal) => {
+    try {
+      await removeContact.mutateAsync(principal);
+      toast.success("Contact removed");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to remove contact",
+      );
+    }
+  };
+
+  const contacts = contactsQuery.data ?? [];
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="space-y-6 animate-fade-up">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">
+        <h1 className="font-display text-2xl font-bold text-foreground">
           Trusted Contacts
         </h1>
-        <p className="text-muted-foreground mt-1">
-          Manage users authorized to exchange encrypted messages with you
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Only mutually trusted contacts can exchange encrypted messages.
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Add New Contact</CardTitle>
-          <CardDescription>
-            Enter the principal address of the user you want to add as a trusted
-            contact
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleAddContact} className="space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="principal">Principal Address</Label>
-              <Input
-                id="principal"
-                value={principalInput}
-                onChange={(e) => setPrincipalInput(e.target.value)}
-                placeholder="xxxxx-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx-xxx"
-                className="font-mono text-sm"
-              />
-            </div>
-            <Button
-              type="submit"
-              disabled={addTrustedContact.isPending}
-              className="gap-2"
-            >
-              <UserPlus className="h-4 w-4" />
-              {addTrustedContact.isPending ? "Adding..." : "Add Contact"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      {/* Add Contact */}
+      <div className="rounded-lg border border-border bg-card p-5">
+        <h2 className="font-medium text-sm mb-3 flex items-center gap-2">
+          <UserPlus className="w-4 h-4 text-primary" />
+          Add Contact
+        </h2>
+        <form onSubmit={(e) => void handleAdd(e)} className="flex gap-2">
+          <Input
+            placeholder="Principal ID (e.g. aaaaa-aa)"
+            value={newPrincipal}
+            onChange={(e) => setNewPrincipal(e.target.value)}
+            className="font-mono text-xs flex-1"
+            data-ocid="contacts.input"
+          />
+          <Button
+            type="submit"
+            size="sm"
+            disabled={!newPrincipal.trim() || addContact.isPending}
+            data-ocid="contacts.primary_button"
+          >
+            {addContact.isPending ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              "Add"
+            )}
+          </Button>
+        </form>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Your Trusted Contacts</CardTitle>
-          <CardDescription>
-            Users you have authorized for secure messaging
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {contacts.length === 0 ? (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                You haven't added any trusted contacts yet. Add contacts to
-                start exchanging encrypted messages.
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Principal</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Details</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {contacts.map((principal) => (
-                  <ContactRow
-                    key={principal.toString()}
-                    principal={principal}
-                  />
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {/* Contact List */}
+      <div className="rounded-lg border border-border bg-card overflow-hidden">
+        <div className="px-5 py-3 border-b border-border flex items-center gap-2">
+          <Users className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium">
+            {contacts.length} Contact{contacts.length !== 1 ? "s" : ""}
+          </span>
+        </div>
 
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Note:</strong> Both you and the other user must add each other
-          as trusted contacts before you can exchange messages. This ensures
-          mutual consent for secure communication.
-        </AlertDescription>
-      </Alert>
+        {contactsQuery.isLoading ? (
+          <div
+            className="p-8 flex items-center justify-center"
+            data-ocid="contacts.loading_state"
+          >
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : contacts.length === 0 ? (
+          <div
+            className="p-8 text-center text-muted-foreground text-sm"
+            data-ocid="contacts.empty_state"
+          >
+            No trusted contacts yet. Add someone by their principal ID above.
+          </div>
+        ) : (
+          <Table data-ocid="contacts.table">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Contact</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {contacts.map((p, i) => (
+                <ContactRow
+                  key={p.toString()}
+                  principal={p}
+                  index={i + 1}
+                  onRemove={(p) => void handleRemove(p)}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }

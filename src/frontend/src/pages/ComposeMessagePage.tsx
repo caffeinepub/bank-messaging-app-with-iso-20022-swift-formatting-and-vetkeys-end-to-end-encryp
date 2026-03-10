@@ -1,399 +1,299 @@
-import { MessageType } from "@/backend";
-import DiagnosticsPanel from "@/components/messages/DiagnosticsPanel";
-import Iso20022Composer from "@/components/messages/Iso20022Composer";
-import SwiftComposer from "@/components/messages/SwiftComposer";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useActor } from "@/hooks/useActor";
-import { useSendMessage } from "@/hooks/useQueries";
-import { useGetRelationshipStatus } from "@/hooks/useSyncStatus";
-import { useTransportKey } from "@/hooks/useTransportKey";
-import { useGetTrustedContacts } from "@/hooks/useTrustedContacts";
-import { encryptPayload } from "@/lib/crypto/e2ee";
-import {
-  type Iso20022Message,
-  createEmptyIso20022Message,
-  generateIso20022Raw,
-} from "@/lib/messageFormats/iso20022";
-import {
-  type SwiftMessage,
-  createEmptySwiftMessage,
-  generateSwiftRaw,
-} from "@/lib/messageFormats/swift";
-import { getPersistedUrlParameter } from "@/utils/urlParams";
-import { Principal } from "@dfinity/principal";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { Textarea } from "@/components/ui/textarea";
+import { Principal } from "@icp-sdk/core/principal";
 import {
   AlertCircle,
   CheckCircle2,
-  RefreshCw,
+  Loader2,
+  PenSquare,
   Send,
-  XCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useActor } from "../hooks/useActor";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import {
+  MessageType,
+  useRelationshipStatus,
+  useSendMessage,
+  useTrustedContacts,
+} from "../hooks/useQueries";
+import {
+  type KeyPair,
+  encryptMessage,
+  loadOrGenerateKeyPair,
+} from "../lib/crypto/transportKeys";
+import { generateVetKey } from "../lib/crypto/vetKey";
 
 export default function ComposeMessagePage() {
-  const navigate = useNavigate();
-  const search = useSearch({ from: "/compose" });
-  const { data: contacts = [] } = useGetTrustedContacts();
-  const [selectedRecipient, setSelectedRecipient] = useState<string>("");
-  const [messageType, setMessageType] = useState<"iso20022" | "swift">(
-    "iso20022",
-  );
-  const [iso20022Data, setIso20022Data] = useState<Iso20022Message>(
-    createEmptyIso20022Message(),
-  );
-  const [swiftData, setSwiftData] = useState<SwiftMessage>(
-    createEmptySwiftMessage(),
-  );
-
-  // Get vetKey from URL or session (used for transport key persistence)
-  const [vetKeyFromUrl, setVetKeyFromUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    const urlVetKey =
-      (search as any)?.vetKey || getPersistedUrlParameter("vetKey");
-    setVetKeyFromUrl(urlVetKey);
-  }, [search]);
-
-  const recipientPrincipal = selectedRecipient
-    ? Principal.fromText(selectedRecipient)
-    : null;
-
-  const {
-    data: syncStatus,
-    refetch: refetchSyncStatus,
-    isLoading: syncStatusLoading,
-  } = useGetRelationshipStatus(recipientPrincipal);
-  const { keyPair, vetKey } = useTransportKey(vetKeyFromUrl);
+  const { identity } = useInternetIdentity();
   const { actor } = useActor();
+  const contactsQuery = useTrustedContacts();
   const sendMessage = useSendMessage();
 
-  const handleRefreshStatus = async () => {
-    if (!recipientPrincipal) return;
+  const [recipientInput, setRecipientInput] = useState("");
+  const [parsedRecipient, setParsedRecipient] = useState<Principal | null>(
+    null,
+  );
+  const [messageBody, setMessageBody] = useState("");
+  const [sentMessageId, setSentMessageId] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  // useRef for vetKey and keyPair — read synchronously at send time
+  const vetKeyRef = useRef<string | null>(null);
+  const keyPairRef = useRef<KeyPair | null>(null);
+
+  // Load keys on mount — into refs, not state (avoids re-render timing issues)
+  useEffect(() => {
+    const principal = identity?.getPrincipal().toString();
+    if (!principal) return;
+    vetKeyRef.current = generateVetKey(principal);
+    keyPairRef.current = loadOrGenerateKeyPair();
+  }, [identity]);
+
+  // Parse recipient principal when input changes
+  useEffect(() => {
+    const text = recipientInput.trim();
+    if (!text) {
+      setParsedRecipient(null);
+      return;
+    }
     try {
-      await refetchSyncStatus();
-      toast.success("Status refreshed");
-    } catch (_error) {
-      toast.error("Failed to refresh status");
+      setParsedRecipient(Principal.fromText(text));
+    } catch {
+      setParsedRecipient(null);
     }
-  };
+  }, [recipientInput]);
 
-  const getSyncStatusMessage = () => {
-    if (!syncStatus) return null;
+  const relationshipQuery = useRelationshipStatus(parsedRecipient);
 
-    if (!syncStatus.callerHasPublicKey) {
-      return {
-        type: "error" as const,
-        message:
-          "Your transport key is not registered. Go to Dashboard and generate or rotate your key.",
-      };
-    }
+  const contacts = contactsQuery.data ?? [];
 
-    if (!syncStatus.otherHasPublicKey) {
-      return {
-        type: "error" as const,
-        message:
-          "Recipient has not registered a transport key. They need to open the app and generate a key in their Dashboard.",
-      };
-    }
-
-    if (!syncStatus.isMutuallyTrusted) {
-      if (!syncStatus.callerTrustsOther) {
-        return {
-          type: "error" as const,
-          message: "You have not added this recipient as a trusted contact.",
-        };
-      }
-      if (!syncStatus.otherTrustsCaller) {
-        return {
-          type: "error" as const,
-          message:
-            "Recipient has not added you as a trusted contact. They need to add your principal to their contacts list.",
-        };
-      }
-    }
-
-    return {
-      type: "success" as const,
-      message: "Ready to send encrypted messages. Both accounts are in sync.",
-    };
-  };
-
+  const relationship = relationshipQuery.data;
   const canSend =
-    syncStatus?.callerHasPublicKey &&
-    syncStatus?.otherHasPublicKey &&
-    syncStatus?.isMutuallyTrusted &&
-    !!keyPair;
+    !!parsedRecipient &&
+    !!messageBody.trim() &&
+    (relationship?.callerHasPublicKey ?? false) &&
+    (relationship?.otherHasPublicKey ?? false) &&
+    (relationship?.isMutuallyTrusted ?? false);
 
-  const handleSend = async () => {
-    if (!selectedRecipient) {
-      toast.error("Please select a recipient");
-      return;
-    }
+  const sendReadiness = (() => {
+    if (!parsedRecipient)
+      return { ok: false, reason: "Enter a recipient principal" };
+    if (relationshipQuery.isLoading)
+      return { ok: false, reason: "Checking relationship..." };
+    if (!relationship?.callerHasPublicKey)
+      return {
+        ok: false,
+        reason: "Load your transport key on the Dashboard first",
+      };
+    if (!relationship?.otherHasPublicKey)
+      return { ok: false, reason: "Recipient has no public key registered" };
+    if (!relationship?.isMutuallyTrusted)
+      return {
+        ok: false,
+        reason: "Not mutually trusted — both parties must add each other",
+      };
+    if (!messageBody.trim()) return { ok: false, reason: "Enter a message" };
+    return { ok: true, reason: "All checks passed - ready to send" };
+  })();
 
-    if (!canSend) {
-      toast.error("Cannot send message. Check sync status below.");
-      return;
-    }
+  const handleSend = useCallback(async () => {
+    if (!actor || !parsedRecipient || !messageBody.trim()) return;
 
+    setSendError(null);
+    setSentMessageId(null);
+
+    // Read keys synchronously from refs at send time
+    const keyPair = keyPairRef.current;
     if (!keyPair) {
-      toast.error("Your transport key is not available on this device");
+      setSendError(
+        "Transport key not loaded. Go to Dashboard and load your transport key.",
+      );
       return;
     }
 
-    if (!actor) {
-      toast.error("Backend connection not available");
+    // Fetch recipient public key FRESH at send time — never from cached state
+    let recipientPublicKey: Uint8Array | null = null;
+    try {
+      recipientPublicKey = await actor.getContactPublicKey(parsedRecipient);
+    } catch (err) {
+      setSendError(
+        `Failed to fetch recipient public key: ${err instanceof Error ? err.message : String(err)}`,
+      );
       return;
     }
+
+    if (!recipientPublicKey || recipientPublicKey.length === 0) {
+      setSendError(
+        "Recipient public key not available. Add them as a trusted contact first.",
+      );
+      return;
+    }
+
+    // Encrypt the message
+    const { encryptedPayload, encryptedSymmetricKey } = encryptMessage(
+      messageBody.trim(),
+      recipientPublicKey,
+    );
 
     try {
-      // Fetch the recipient's public key directly at send time using the
-      // dedicated getContactPublicKey function which is accessible to
-      // mutually trusted contacts (unlike getUserProfile which is restricted
-      // to own profile only).
-      const recipientPub = await actor.getContactPublicKey(
-        Principal.fromText(selectedRecipient),
-      );
-
-      if (!recipientPub) {
-        toast.error(
-          "Recipient public key not available. Ask them to open the app and load their key.",
-        );
-        return;
-      }
-
-      // Generate plaintext message locally
-      const plaintext =
-        messageType === "iso20022"
-          ? generateIso20022Raw(iso20022Data)
-          : generateSwiftRaw(swiftData);
-
-      // Encrypt using E2EE: AES-GCM for payload, RSA-OAEP for key wrapping
-      const { encryptedPayload, encryptedSymmetricKey } = await encryptPayload(
-        plaintext,
-        recipientPub,
-      );
-
-      const recipient = Principal.fromText(selectedRecipient);
-      const msgType =
-        messageType === "iso20022" ? MessageType.iso20022 : MessageType.swift;
-
-      // Send only encrypted data to backend - no plaintext transmitted
-      await sendMessage.mutateAsync({
-        to: recipient,
-        messageType: msgType,
+      const messageId = await sendMessage.mutateAsync({
+        to: parsedRecipient,
+        messageType: MessageType.swift,
         encryptedPayload,
         encryptedSymmetricKey,
       });
-
-      toast.success("Encrypted message sent successfully");
-      navigate({ to: "/inbox" });
-    } catch (error: unknown) {
-      console.error("Failed to send message:", error);
-      const message =
-        error instanceof Error ? error.message : "Failed to send message";
-      toast.error(message);
+      setSentMessageId(messageId.toString());
+      setMessageBody("");
+      toast.success(`Message sent! ID: ${messageId}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Send failed";
+      setSendError(msg);
+      toast.error(msg);
     }
-  };
-
-  const statusInfo = getSyncStatusMessage();
+  }, [actor, parsedRecipient, messageBody, sendMessage]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6 animate-fade-up max-w-2xl">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">
+        <h1 className="font-display text-2xl font-bold text-foreground flex items-center gap-2">
+          <PenSquare className="w-5 h-5 text-primary" />
           Compose Message
         </h1>
-        <p className="text-muted-foreground mt-1">
-          Create and send encrypted ISO 20022 or SWIFT messages
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Messages are end-to-end encrypted before transmission.
         </p>
       </div>
 
-      {!vetKey && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            No vetKey detected. Your transport key may not be available. Go to
-            the Dashboard to generate a key and get your vetKey.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {contacts.length === 0 ? (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            You need to add trusted contacts before you can send messages. Go to
-            the Contacts page to add users.
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Recipient</CardTitle>
-              <CardDescription>
-                Select a trusted contact to send the message to
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="recipient">Recipient</Label>
-                <Select
-                  value={selectedRecipient}
-                  onValueChange={setSelectedRecipient}
-                >
-                  <SelectTrigger id="recipient" data-ocid="compose.select">
-                    <SelectValue placeholder="Select a contact" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contacts.map((principal) => (
-                      <SelectItem
-                        key={principal.toString()}
-                        value={principal.toString()}
-                      >
-                        {principal.toString()}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {selectedRecipient && (
-            <>
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base">Sync Status</CardTitle>
-                      <CardDescription>
-                        Check if both accounts are ready to exchange messages
-                      </CardDescription>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRefreshStatus}
-                      disabled={syncStatusLoading}
-                      className="gap-2"
-                      data-ocid="compose.secondary_button"
-                    >
-                      <RefreshCw
-                        className={`h-4 w-4 ${syncStatusLoading ? "animate-spin" : ""}`}
-                      />
-                      Refresh
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {statusInfo && (
-                    <Alert
-                      variant={
-                        statusInfo.type === "error" ? "destructive" : "default"
-                      }
-                    >
-                      {statusInfo.type === "success" ? (
-                        <CheckCircle2 className="h-4 w-4" />
-                      ) : (
-                        <XCircle className="h-4 w-4" />
-                      )}
-                      <AlertDescription>{statusInfo.message}</AlertDescription>
-                    </Alert>
-                  )}
-                </CardContent>
-              </Card>
-
-              <DiagnosticsPanel
-                callerHasPublicKey={syncStatus?.callerHasPublicKey ?? false}
-                otherHasPublicKey={syncStatus?.otherHasPublicKey ?? false}
-                isMutuallyTrusted={syncStatus?.isMutuallyTrusted ?? false}
-                keyPairLoaded={!!keyPair}
-                vetKeyPresent={!!vetKey}
-              />
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Message Content</CardTitle>
-                  <CardDescription>
-                    Choose message type and fill in the required fields
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Tabs
-                    value={messageType}
-                    onValueChange={(v) =>
-                      setMessageType(v as "iso20022" | "swift")
-                    }
+      <div className="rounded-lg border border-border bg-card p-5 space-y-5">
+        {/* Recipient */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Recipient Principal</Label>
+          <Input
+            placeholder="Principal ID (e.g. aaaaa-aa)"
+            value={recipientInput}
+            onChange={(e) => setRecipientInput(e.target.value)}
+            className="font-mono text-xs"
+            data-ocid="compose.input"
+          />
+          {contacts.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {contacts.map((p) => {
+                const str = p.toString();
+                const short = `${str.slice(0, 8)}...${str.slice(-4)}`;
+                return (
+                  <button
+                    key={str}
+                    type="button"
+                    onClick={() => setRecipientInput(str)}
+                    className="font-mono text-xs px-2 py-0.5 rounded border border-border hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-primary transition-colors"
                   >
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="iso20022" data-ocid="compose.tab.1">
-                        ISO 20022
-                      </TabsTrigger>
-                      <TabsTrigger value="swift" data-ocid="compose.tab.2">
-                        SWIFT
-                      </TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="iso20022" className="mt-4">
-                      <Iso20022Composer
-                        value={iso20022Data}
-                        onChange={setIso20022Data}
-                      />
-                    </TabsContent>
-                    <TabsContent value="swift" className="mt-4">
-                      <SwiftComposer
-                        value={swiftData}
-                        onChange={setSwiftData}
-                      />
-                    </TabsContent>
-                  </Tabs>
-                </CardContent>
-              </Card>
+                    {short}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleSend}
-                  disabled={!canSend || sendMessage.isPending}
-                  size="lg"
-                  className="gap-2"
-                  data-ocid="compose.primary_button"
-                >
-                  {sendMessage.isPending ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4" />
-                      Send Encrypted Message
-                    </>
-                  )}
-                </Button>
-              </div>
+        {/* Message body */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Message</Label>
+          <Textarea
+            placeholder="Type your encrypted message here..."
+            value={messageBody}
+            onChange={(e) => setMessageBody(e.target.value)}
+            className="min-h-[120px] resize-none font-sans text-sm"
+            data-ocid="compose.textarea"
+          />
+        </div>
+
+        {/* Send Readiness Diagnostics */}
+        <div className="rounded-md border border-border bg-secondary/30 p-3 space-y-2">
+          <p className="text-xs font-mono text-muted-foreground">
+            Send Diagnostics
+          </p>
+          <div className="flex items-start gap-2">
+            {sendReadiness.ok ? (
+              <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+            )}
+            <span className="text-xs text-muted-foreground">
+              {sendReadiness.reason}
+            </span>
+          </div>
+          {relationship && (
+            <pre className="text-xs font-mono text-foreground/60 mt-2 overflow-auto whitespace-pre-wrap">
+              {JSON.stringify(
+                {
+                  timestamp: new Date().toISOString(),
+                  callerHasPublicKey: relationship.callerHasPublicKey,
+                  otherHasPublicKey: relationship.otherHasPublicKey,
+                  isMutuallyTrusted: relationship.isMutuallyTrusted,
+                  keyPairLoaded: !!keyPairRef.current,
+                  vetKeyPresent: !!vetKeyRef.current,
+                  canSend,
+                  disabledReason: sendReadiness.reason,
+                },
+                null,
+                2,
+              )}
+            </pre>
+          )}
+        </div>
+
+        {/* Send button */}
+        <Button
+          onClick={() => void handleSend()}
+          disabled={!canSend || sendMessage.isPending}
+          className="w-full"
+          data-ocid="compose.submit_button"
+        >
+          {sendMessage.isPending ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Encrypting &amp; Sending...
+            </>
+          ) : (
+            <>
+              <Send className="w-4 h-4 mr-2" />
+              Send Encrypted Message
             </>
           )}
-        </>
-      )}
+        </Button>
+
+        {/* Success */}
+        {sentMessageId && (
+          <div
+            className="text-xs text-primary font-mono bg-primary/5 border border-primary/20 rounded p-3"
+            data-ocid="compose.success_state"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span className="font-semibold">Message sent successfully</span>
+            </div>
+            <div>Message ID: {sentMessageId}</div>
+          </div>
+        )}
+
+        {/* Error */}
+        {sendError && (
+          <div
+            className="text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded p-3"
+            data-ocid="compose.error_state"
+          >
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-3.5 h-3.5" />
+              <span>{sendError}</span>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

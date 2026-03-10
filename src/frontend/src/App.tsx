@@ -6,7 +6,6 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { ThemeProvider } from "next-themes";
 import AuthGate from "./components/auth/AuthGate";
 import AppShell from "./components/layout/AppShell";
 import ComposeMessagePage from "./pages/ComposeMessagePage";
@@ -73,9 +72,9 @@ declare module "@tanstack/react-router" {
 
 export default function App() {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <>
       <RouterProvider router={router} />
       <Toaster />
-    </ThemeProvider>
+    </>
   );
 }

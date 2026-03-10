@@ -128,7 +128,9 @@ export interface backendInterface {
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     /**
-     * Get the public key of a mutually trusted contact.
+     * / Get the public key of a mutually trusted contact.
+     * / Only works if both caller and the contact have added each other as trusted contacts.
+     * / This allows encrypting messages to trusted contacts without exposing full profile data.
      */
     getContactPublicKey(contact: Principal): Promise<Uint8Array | null>;
     getMessageById(messageId: bigint): Promise<EncryptedMessage>;
@@ -237,17 +239,16 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getContactPublicKey(arg0);
-                return result.length === 0 ? null : result[0];
+                return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getContactPublicKey(arg0);
-            return result.length === 0 ? null : result[0];
+            return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
         }
     }
-
     async getMessageById(arg0: bigint): Promise<EncryptedMessage> {
         if (this.processError) {
             try {

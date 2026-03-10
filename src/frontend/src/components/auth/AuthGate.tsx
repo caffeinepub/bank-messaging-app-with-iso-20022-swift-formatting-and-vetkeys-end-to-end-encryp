@@ -1,91 +1,104 @@
-import UnauthenticatedLanding from "@/components/landing/UnauthenticatedLanding";
-import ConfigErrorScreen from "@/components/system/ConfigErrorScreen";
-import { useActor } from "@/hooks/useActor";
-import { useInternetIdentity } from "@/hooks/useInternetIdentity";
-import { useGetCallerUserProfile } from "@/hooks/useProfiles";
-import ProfileSetupModal from "@/pages/ProfileSetupModal";
-import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { useActor } from "../../hooks/useActor";
+import { useInternetIdentity } from "../../hooks/useInternetIdentity";
+import { useCallerProfile } from "../../hooks/useQueries";
+import LandingPage from "../../pages/LandingPage";
+import ProfileSetupModal from "./ProfileSetupModal";
 
-interface AuthGateProps {
-  children: ReactNode;
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative">
+          <div className="w-12 h-12 rounded-full border-2 border-primary/20" />
+          <Loader2 className="w-12 h-12 text-primary animate-spin absolute inset-0" />
+        </div>
+        <p className="text-muted-foreground text-sm font-mono">
+          Initializing...
+        </p>
+      </div>
+    </div>
+  );
 }
 
-export default function AuthGate({ children }: AuthGateProps) {
+function ConfigErrorScreen() {
+  return (
+    <div
+      className="min-h-screen bg-background flex items-center justify-center p-4"
+      data-ocid="config.error_state"
+    >
+      <div className="max-w-md w-full space-y-4">
+        <div className="flex items-center gap-3">
+          <AlertTriangle className="w-6 h-6 text-destructive flex-shrink-0" />
+          <h2 className="font-display text-lg font-semibold text-foreground">
+            Connection Error
+          </h2>
+        </div>
+        <p className="text-muted-foreground text-sm">
+          Unable to connect to the backend. Please try refreshing the page.
+        </p>
+        <Button
+          variant="outline"
+          onClick={() => window.location.reload()}
+          className="w-full"
+          data-ocid="config.primary_button"
+        >
+          Refresh Page
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export default function AuthGate({ children }: { children: ReactNode }) {
   const { identity, isInitializing } = useInternetIdentity();
-  const { actor, isError } = useActor();
-  const queryClient = useQueryClient();
-  const {
-    data: userProfile,
-    isLoading: profileLoading,
-    isFetched,
-  } = useGetCallerUserProfile();
-  const [showProfileSetup, setShowProfileSetup] = useState(false);
-  const [configError, setConfigError] = useState<string | null>(null);
+  const { actor, isFetching } = useActor();
+  const profileQuery = useCallerProfile();
+  const [profileSetupOpen, setProfileSetupOpen] = useState(false);
+  const [actorFailed, setActorFailed] = useState(false);
 
   const isAuthenticated = !!identity;
 
-  // Only show config error when the actor query has actually failed.
-  // This prevents false-positive error screens during the initial load.
+  // Only mark actor as failed after a genuine fetch attempt
   useEffect(() => {
-    if (isError && !isInitializing) {
-      setConfigError(
-        "Failed to initialize backend connection. Please check your configuration.",
-      );
-    } else if (actor) {
-      setConfigError(null);
+    if (!isFetching && !actor && isAuthenticated) {
+      const timer = setTimeout(() => setActorFailed(true), 5000);
+      return () => clearTimeout(timer);
     }
-  }, [actor, isError, isInitializing]);
+    if (actor) setActorFailed(false);
+  }, [actor, isFetching, isAuthenticated]);
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      queryClient.clear();
-      setConfigError(null);
-    }
-  }, [isAuthenticated, queryClient]);
-
+  // Show profile setup when logged in and profile is null
   useEffect(() => {
     if (
       isAuthenticated &&
-      !profileLoading &&
-      isFetched &&
-      userProfile === null
+      actor &&
+      !profileQuery.isLoading &&
+      profileQuery.data === null
     ) {
-      setShowProfileSetup(true);
-    } else {
-      setShowProfileSetup(false);
+      setProfileSetupOpen(true);
     }
-  }, [isAuthenticated, profileLoading, isFetched, userProfile]);
+  }, [isAuthenticated, actor, profileQuery.isLoading, profileQuery.data]);
 
-  // Show config error screen only on genuine backend failures
-  if (configError && !isInitializing) {
-    return <ConfigErrorScreen error={configError} />;
-  }
+  if (isInitializing) return <LoadingScreen />;
 
-  if (isInitializing) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
-          <p className="text-sm text-muted-foreground">Initializing...</p>
-        </div>
-      </div>
-    );
-  }
+  if (!isAuthenticated) return <LandingPage />;
 
-  if (!isAuthenticated) {
-    return <UnauthenticatedLanding />;
-  }
+  if (isFetching && !actor) return <LoadingScreen />;
+
+  if (actorFailed && !actor) return <ConfigErrorScreen />;
 
   return (
     <>
-      {children}
-      {showProfileSetup && (
+      {profileSetupOpen && (
         <ProfileSetupModal
-          open={showProfileSetup}
-          onClose={() => setShowProfileSetup(false)}
+          open={profileSetupOpen}
+          onComplete={() => setProfileSetupOpen(false)}
         />
       )}
+      {children}
     </>
   );
 }
