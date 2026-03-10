@@ -13,7 +13,7 @@ interface AuthGateProps {
 
 export default function AuthGate({ children }: AuthGateProps) {
   const { identity, isInitializing } = useInternetIdentity();
-  const { actor, isFetching } = useActor();
+  const { actor, isError } = useActor();
   const queryClient = useQueryClient();
   const {
     data: userProfile,
@@ -25,17 +25,17 @@ export default function AuthGate({ children }: AuthGateProps) {
 
   const isAuthenticated = !!identity;
 
-  // Detect configuration errors by attempting to use the actor
+  // Only show config error when the actor query has actually failed.
+  // This prevents false-positive error screens during the initial load.
   useEffect(() => {
-    if (!isFetching && !actor && !isInitializing) {
-      // If we're not fetching, not initializing, but still don't have an actor, there's likely a config error
+    if (isError && !isInitializing) {
       setConfigError(
         "Failed to initialize backend connection. Please check your configuration.",
       );
     } else if (actor) {
       setConfigError(null);
     }
-  }, [actor, isFetching, isInitializing]);
+  }, [actor, isError, isInitializing]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -57,7 +57,7 @@ export default function AuthGate({ children }: AuthGateProps) {
     }
   }, [isAuthenticated, profileLoading, isFetched, userProfile]);
 
-  // Show config error screen if there's a configuration issue
+  // Show config error screen only on genuine backend failures
   if (configError && !isInitializing) {
     return <ConfigErrorScreen error={configError} />;
   }
