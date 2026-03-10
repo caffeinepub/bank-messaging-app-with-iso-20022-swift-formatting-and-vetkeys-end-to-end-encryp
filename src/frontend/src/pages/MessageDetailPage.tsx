@@ -31,34 +31,42 @@ export default function MessageDetailPage() {
   const { identity } = useInternetIdentity();
   const [decrypted, setDecrypted] = useState<string | null>(null);
   const [decryptError, setDecryptError] = useState<string | null>(null);
+  const [decrypting, setDecrypting] = useState(false);
 
   const msgId = messageId ? BigInt(messageId) : null;
   const messageQuery = useMessageById(msgId);
 
   const currentPrincipal = identity?.getPrincipal().toString() ?? "";
 
-  const handleDecrypt = () => {
+  const handleDecrypt = async () => {
     const msg = messageQuery.data;
     if (!msg) return;
 
-    const keyPair = loadKeyPair();
-    if (!keyPair) {
-      setDecryptError(
-        "Transport key not loaded. Go to the Dashboard and load your transport key first.",
-      );
-      return;
-    }
+    setDecrypting(true);
+    setDecryptError(null);
 
     try {
-      const plaintext = decryptMessage(
+      // loadKeyPair is now async — loads ECDH private key from localStorage
+      const keyPair = await loadKeyPair();
+      if (!keyPair) {
+        setDecryptError(
+          "Transport key not found. Go to the Dashboard and load your transport key first.",
+        );
+        return;
+      }
+
+      const plaintext = await decryptMessage(
         msg.encryptedPayload,
         msg.encryptedSymmetricKey,
         keyPair.privateKey,
       );
       setDecrypted(plaintext);
-      setDecryptError(null);
-    } catch {
-      setDecryptError("Failed to decrypt message. The key may not match.");
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to decrypt message.";
+      setDecryptError(msg);
+    } finally {
+      setDecrypting(false);
     }
   };
 
@@ -179,12 +187,17 @@ export default function MessageDetailPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={handleDecrypt}
+              onClick={() => void handleDecrypt()}
+              disabled={decrypting}
               className="h-7 px-3 text-xs"
               data-ocid="message.primary_button"
             >
-              <Unlock className="w-3 h-3 mr-1.5" />
-              Decrypt
+              {decrypting ? (
+                <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+              ) : (
+                <Unlock className="w-3 h-3 mr-1.5" />
+              )}
+              {decrypting ? "Decrypting..." : "Decrypt"}
             </Button>
           )}
         </div>

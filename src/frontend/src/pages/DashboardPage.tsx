@@ -88,14 +88,15 @@ export default function DashboardPage() {
     setLoadingKey(true);
     try {
       const vetKey = generateVetKey(principal);
-      const keyPair = loadOrGenerateKeyPair();
+      // loadOrGenerateKeyPair is now async — uses ECDH keys persisted in localStorage
+      const keyPair = await loadOrGenerateKeyPair();
       const profile = profileQuery.data;
       const hasProfile = !!profile;
 
-      // Update public key in profile if needed
+      // Update public key in profile if needed (publicKeyRaw is the 65-byte ECDH public key)
       if (actor && profile) {
         const existingKey = profile.publicKey;
-        const newKey = keyPair.publicKey;
+        const newKey = keyPair.publicKeyRaw;
         if (
           !existingKey ||
           existingKey.length !== newKey.length ||

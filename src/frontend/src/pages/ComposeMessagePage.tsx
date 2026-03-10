@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,16 +41,18 @@ export default function ComposeMessagePage() {
   const [sentMessageId, setSentMessageId] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
 
-  // useRef for vetKey and keyPair — read synchronously at send time
+  // useRef for vetKey and keyPair — loaded async on mount
   const vetKeyRef = useRef<string | null>(null);
   const keyPairRef = useRef<KeyPair | null>(null);
 
-  // Load keys on mount — into refs, not state (avoids re-render timing issues)
+  // Load keys on mount (async — ECDH key pair from localStorage)
   useEffect(() => {
     const principal = identity?.getPrincipal().toString();
     if (!principal) return;
     vetKeyRef.current = generateVetKey(principal);
-    keyPairRef.current = loadOrGenerateKeyPair();
+    void loadOrGenerateKeyPair().then((kp) => {
+      keyPairRef.current = kp;
+    });
   }, [identity]);
 
   // Parse recipient principal when input changes
@@ -107,45 +108,55 @@ export default function ComposeMessagePage() {
     setSendError(null);
     setSentMessageId(null);
 
-    // Read keys synchronously from refs at send time
-    const keyPair = keyPairRef.current;
+    // Ensure key pair is loaded (should already be set by useEffect)
+    let keyPair = keyPairRef.current;
     if (!keyPair) {
-      setSendError(
-        "Transport key not loaded. Go to Dashboard and load your transport key.",
-      );
-      return;
+      keyPair = await loadOrGenerateKeyPair();
+      keyPairRef.current = keyPair;
     }
 
-    // Fetch recipient public key FRESH at send time — never from cached state
+    // Fetch recipient public key fresh at send time
     let recipientPublicKey: Uint8Array | null = null;
     try {
       recipientPublicKey = await actor.getContactPublicKey(parsedRecipient);
     } catch (err) {
       setSendError(
-        `Failed to fetch recipient public key: ${err instanceof Error ? err.message : String(err)}`,
+        `Failed to fetch recipient public key: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
       );
       return;
     }
 
     if (!recipientPublicKey || recipientPublicKey.length === 0) {
       setSendError(
-        "Recipient public key not available. Add them as a trusted contact first.",
+        "Recipient public key not available. Ask them to load their transport key first.",
       );
       return;
     }
 
-    // Encrypt the message
-    const { encryptedPayload, encryptedSymmetricKey } = encryptMessage(
-      messageBody.trim(),
-      recipientPublicKey,
-    );
+    // Encrypt using ECDH + AES-GCM
+    let encrypted: {
+      encryptedPayload: Uint8Array;
+      encryptedSymmetricKey: Uint8Array;
+    };
+    try {
+      encrypted = await encryptMessage(messageBody.trim(), recipientPublicKey);
+    } catch (err) {
+      setSendError(
+        `Encryption failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      return;
+    }
 
     try {
       const messageId = await sendMessage.mutateAsync({
         to: parsedRecipient,
         messageType: MessageType.swift,
-        encryptedPayload,
-        encryptedSymmetricKey,
+        encryptedPayload: encrypted.encryptedPayload,
+        encryptedSymmetricKey: encrypted.encryptedSymmetricKey,
       });
       setSentMessageId(messageId.toString());
       setMessageBody("");

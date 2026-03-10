@@ -31,10 +31,11 @@ export default function ProfileSetupModal({
     if (!name.trim()) return;
 
     try {
-      const keyPair = loadOrGenerateKeyPair();
+      // loadOrGenerateKeyPair is async — must await
+      const keyPair = await loadOrGenerateKeyPair();
       await saveProfile.mutateAsync({
         name: name.trim(),
-        publicKey: keyPair.publicKey,
+        publicKey: keyPair.publicKeyRaw,
       });
       toast.success("Profile created successfully");
       onComplete();
