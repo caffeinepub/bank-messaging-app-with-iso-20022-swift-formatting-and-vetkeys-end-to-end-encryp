@@ -1,50 +1,24 @@
 # OP_DUP Secure Messages
 
 ## Current State
-The project has an existing backend and frontend from previous incremental patches. The frontend/backend have suffered repeated IDL mismatches, timing bugs, and config error regressions. A full clean rebuild is required.
+The app is a fully functional decentralized encrypted messaging and token transfer dapp on ICP. Users authenticate via Internet Identity and can freely register, set up profiles, add trusted contacts, and exchange encrypted messages. There is no access gate -- anyone with the URL can sign up.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Clean, stable backend with all required functions properly exposed
-- Reliable frontend that reads vetKey synchronously on load (not inside useEffect)
-- Config error screen that only shows after a genuine backend call failure
-- Dashboard: transport key diagnostics, token balances (ckBTC, ckETH, ckUSDC) with Refresh button
-- Compose: encrypts message using vetKey+keyPair loaded synchronously; fetches recipient public key via `getContactPublicKey` at send time
-- Inbox: shows sent and received messages
-- Contacts: add/remove trusted contacts with relationship status
-- Landing page: app name "OP_DUP Secure Messages", accurate info about ckBTC/ckETH/ckUSDC, decentralization disclaimer, no deployment guide references
-- Token send: real on-chain ICRC-1 transfer, shows block index on success
+- Invite-links component integration: only users with a valid invite link can register and access the app
+- Admin invite link management UI on the Dashboard (generate and copy invite links)
+- Invite gate check in AuthGate: after authentication, if the user is not yet approved/registered via invite, show an "access restricted" screen with instructions to obtain an invite link
 
 ### Modify
-- Backend: clean single source of truth with `getContactPublicKey` for mutually trusted contacts only
-- Frontend declarations (backend.did.d.ts, backend.did.js, backend.ts): fully in sync with backend
-- AuthGate: config error only after isError=true AND not initializing
+- AuthGate to check invite/access status after authentication before showing the app
+- DashboardPage to include an invite link management section for admins
 
 ### Remove
-- All references to deployment guide or system administrator in error screens
-- ISO 20022 / SWIFT message type terminology from the UI (keep as internal enum but show as "Encrypted Message" to users)
+- Nothing removed
 
 ## Implementation Plan
-
-### Backend functions
-- `getCallerUserProfile()` -> own profile
-- `saveCallerUserProfile(profile)` -> save own profile with publicKey
-- `getContactPublicKey(contact)` -> public key of mutually trusted contact only
-- `getRelationshipStatus(other)` -> SyncStatus with callerHasPublicKey, otherHasPublicKey, isMutuallyTrusted, callerTrustsOther, otherTrustsCaller
-- `addTrustedContact(user)` -> add contact
-- `removeTrustedContact(user)` -> remove contact
-- `getTrustedContacts()` -> list
-- `isTrustedContact(user)` -> bool
-- `sendMessage(to, messageType, encryptedPayload, encryptedSymmetricKey)` -> message id; requires mutual trust
-- `getAllMessagesForCaller()` -> sent + received
-- `getMessageById(id)` -> single message
-- `getUserProfile(user)` -> admin only (kept for admin use, not called from main send flow)
-
-### Frontend key points
-- vetKey loaded on component mount; stored in ref for synchronous access at send time
-- `getContactPublicKey` called at send time to fetch recipient public key fresh
-- Token balances fetched via ICRC-1 `icrc1_balance_of` on mainnet ledger canisters
-- Token send via ICRC-1 `icrc1_transfer`; show block index result
-- No "deployment guide" text anywhere
-- Landing page: OP_DUP Secure Messages branding, ckBTC/ckETH/ckUSDC info, decentralization disclaimer
+1. Select and integrate the `invite-links` Caffeine component
+2. Wire invite-links access check into AuthGate so unapproved users see a clear "You need an invite link to access this app" screen
+3. Add invite link generation UI to DashboardPage for the admin user
+4. Validate and build

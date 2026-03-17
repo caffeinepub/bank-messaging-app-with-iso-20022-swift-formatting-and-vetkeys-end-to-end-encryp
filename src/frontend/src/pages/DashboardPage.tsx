@@ -18,16 +18,24 @@ import {
   Coins,
   Copy,
   Key,
+  Link,
   Loader2,
   RefreshCw,
   Send,
+  UserPlus,
 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { loadConfig } from "../config";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useCallerProfile, useRelationshipStatus } from "../hooks/useQueries";
+import {
+  useCallerProfile,
+  useGenerateInviteCode,
+  useGetInviteCodes,
+  useIsCurrentUserAdmin,
+  useRelationshipStatus,
+} from "../hooks/useQueries";
 import { loadOrGenerateKeyPair } from "../lib/crypto/transportKeys";
 import { generateVetKey, loadVetKey } from "../lib/crypto/vetKey";
 import {
@@ -55,6 +63,9 @@ export default function DashboardPage() {
   const { identity } = useInternetIdentity();
   const { actor } = useActor();
   const profileQuery = useCallerProfile();
+  const isAdminQuery = useIsCurrentUserAdmin();
+  const inviteCodesQuery = useGetInviteCodes();
+  const generateInviteCode = useGenerateInviteCode();
 
   const principal = identity?.getPrincipal().toString() ?? "";
 
@@ -88,12 +99,10 @@ export default function DashboardPage() {
     setLoadingKey(true);
     try {
       const vetKey = generateVetKey(principal);
-      // loadOrGenerateKeyPair is now async — uses ECDH keys persisted in localStorage
       const keyPair = await loadOrGenerateKeyPair();
       const profile = profileQuery.data;
       const hasProfile = !!profile;
 
-      // Update public key in profile if needed (publicKeyRaw is the 65-byte ECDH public key)
       if (actor && profile) {
         const existingKey = profile.publicKey;
         const newKey = keyPair.publicKeyRaw;
@@ -206,7 +215,25 @@ export default function DashboardPage() {
     }
   };
 
+  const handleGenerateInvite = async () => {
+    try {
+      await generateInviteCode.mutateAsync();
+      toast.success("Invite link generated");
+    } catch {
+      toast.error("Failed to generate invite link");
+    }
+  };
+
+  const handleCopyInviteLink = (code: string) => {
+    const url = `${window.location.origin}${window.location.pathname}?code=${code}`;
+    void navigator.clipboard.writeText(url);
+    toast.success("Invite link copied!");
+  };
+
   const storedVetKey = loadVetKey(principal);
+  const isAdmin = isAdminQuery.data === true;
+  const inviteCodes = inviteCodesQuery.data ?? [];
+  const unusedCodes = inviteCodes.filter((c) => !c.used);
 
   return (
     <div className="space-y-6 animate-fade-up">
@@ -529,6 +556,100 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Invite Links (admin only) */}
+      {isAdmin && (
+        <Card className="card-glow border-primary/20" data-ocid="invite.panel">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-primary" />
+                Invite Links
+              </CardTitle>
+              <Badge
+                variant="outline"
+                className="text-xs border-primary/30 text-primary"
+              >
+                Admin
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Generate invite links to share with trusted users. Each link
+              contains a unique code that allows a new user to register.
+            </p>
+
+            <Button
+              size="sm"
+              onClick={() => void handleGenerateInvite()}
+              disabled={generateInviteCode.isPending}
+              data-ocid="invite.generate_button"
+            >
+              {generateInviteCode.isPending ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Link className="w-3.5 h-3.5 mr-2" />
+                  Generate Invite Link
+                </>
+              )}
+            </Button>
+
+            {/* Code list */}
+            {inviteCodes.length > 0 && (
+              <div className="space-y-2" data-ocid="invite.list">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Generated codes ({unusedCodes.length} unused)
+                </p>
+                <div className="space-y-1.5">
+                  {inviteCodes.map((entry, index) => (
+                    <div
+                      key={entry.code}
+                      className="flex items-center gap-2 p-2 rounded border border-border bg-secondary/20"
+                      data-ocid={`invite.item.${index + 1}`}
+                    >
+                      <code className="font-mono text-xs text-foreground flex-1 truncate">
+                        {entry.code}
+                      </code>
+                      {entry.used ? (
+                        <Badge
+                          variant="outline"
+                          className="text-xs text-muted-foreground shrink-0"
+                        >
+                          Used
+                        </Badge>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-7 h-7 shrink-0"
+                          onClick={() => handleCopyInviteLink(entry.code)}
+                          data-ocid={`invite.copy_button.${index + 1}`}
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {inviteCodes.length === 0 && (
+              <div
+                className="text-center py-4 text-xs text-muted-foreground"
+                data-ocid="invite.empty_state"
+              >
+                No invite codes yet. Generate one above.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

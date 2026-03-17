@@ -5,6 +5,7 @@ import { useActor } from "../../hooks/useActor";
 import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 import { useCallerProfile } from "../../hooks/useQueries";
 import LandingPage from "../../pages/LandingPage";
+import InviteCodeScreen from "./InviteCodeScreen";
 import ProfileSetupModal from "./ProfileSetupModal";
 
 function LoadingScreen() {
@@ -57,6 +58,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const { actor, isFetching } = useActor();
   const profileQuery = useCallerProfile();
   const [profileSetupOpen, setProfileSetupOpen] = useState(false);
+  const [inviteVerified, setInviteVerified] = useState(false);
   const [actorFailed, setActorFailed] = useState(false);
 
   const isAuthenticated = !!identity;
@@ -70,17 +72,24 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     if (actor) setActorFailed(false);
   }, [actor, isFetching, isAuthenticated]);
 
-  // Show profile setup when logged in and profile is null
+  // Show profile setup when logged in and profile is null and invite is verified
   useEffect(() => {
     if (
       isAuthenticated &&
       actor &&
       !profileQuery.isLoading &&
-      profileQuery.data === null
+      profileQuery.data === null &&
+      inviteVerified
     ) {
       setProfileSetupOpen(true);
     }
-  }, [isAuthenticated, actor, profileQuery.isLoading, profileQuery.data]);
+  }, [
+    isAuthenticated,
+    actor,
+    profileQuery.isLoading,
+    profileQuery.data,
+    inviteVerified,
+  ]);
 
   if (isInitializing) return <LoadingScreen />;
 
@@ -89,6 +98,15 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   if (isFetching && !actor) return <LoadingScreen />;
 
   if (actorFailed && !actor) return <ConfigErrorScreen />;
+
+  // New user without a profile: show invite gate first
+  if (
+    !profileQuery.isLoading &&
+    profileQuery.data === null &&
+    !inviteVerified
+  ) {
+    return <InviteCodeScreen onVerified={() => setInviteVerified(true)} />;
+  }
 
   return (
     <>

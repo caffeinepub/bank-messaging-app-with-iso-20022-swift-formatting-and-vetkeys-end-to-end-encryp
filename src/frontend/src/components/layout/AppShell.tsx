@@ -165,23 +165,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
         {children}
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-border py-4 mt-auto">
-        <div className="max-w-6xl mx-auto px-4 text-center">
-          <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()}. Built with ♥ using{" "}
-            <a
-              href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              caffeine.ai
-            </a>
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }

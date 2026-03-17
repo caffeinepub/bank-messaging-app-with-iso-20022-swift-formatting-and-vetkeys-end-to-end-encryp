@@ -194,23 +194,6 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-border py-4">
-        <div className="max-w-5xl mx-auto px-6 text-center">
-          <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()}. Built with ♥ using{" "}
-            <a
-              href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              caffeine.ai
-            </a>
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }
