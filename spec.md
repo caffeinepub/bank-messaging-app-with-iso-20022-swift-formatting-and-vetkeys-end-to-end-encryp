@@ -1,24 +1,32 @@
 # OP_DUP Secure Messages
 
 ## Current State
-The app is a fully functional decentralized encrypted messaging and token transfer dapp on ICP. Users authenticate via Internet Identity and can freely register, set up profiles, add trusted contacts, and exchange encrypted messages. There is no access gate -- anyone with the URL can sign up.
+Workspace is empty (draft expired). Full rebuild required.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Invite-links component integration: only users with a valid invite link can register and access the app
-- Admin invite link management UI on the Dashboard (generate and copy invite links)
-- Invite gate check in AuthGate: after authentication, if the user is not yet approved/registered via invite, show an "access restricted" screen with instructions to obtain an invite link
+- Full app rebuild with admin principal `lmmsf-dqn72-o5wi6-ab664-m7cwl-lejc3-nj6ys-ye6fs-jf3t4-prsqg-kae` hardcoded -- admin bypasses invite-only check and can always register/access the app
+- Invite-only access: non-admin users require a valid invite code to register
+- Admin can generate invite links from the Dashboard
+- E2E encryption: persistent ECDH key pairs stored in localStorage, AES-GCM for message encryption
+- Ciphertext-only storage: only encrypted blobs stored on-chain, backend never sees plaintext
+- Mutual trust model: both users must add each other as contacts before messaging
+- Dedicated `getContactPublicKey` backend function for mutually trusted contacts (bypasses getUserProfile auth restriction)
+- Token transfers: ckBTC, ckETH, ckUSDC using real mainnet ledger canister IDs
+- Token balance display with Refresh button on Dashboard
+- Diagnostics JSON on Dashboard showing key status, trust status, canSend readiness
+- No footer branding, no deployment guide references, no SWIFT/ISO 20022 mentions
 
 ### Modify
-- AuthGate to check invite/access status after authentication before showing the app
-- DashboardPage to include an invite link management section for admins
+N/A (full rebuild)
 
 ### Remove
-- Nothing removed
+N/A (full rebuild)
 
 ## Implementation Plan
-1. Select and integrate the `invite-links` Caffeine component
-2. Wire invite-links access check into AuthGate so unapproved users see a clear "You need an invite link to access this app" screen
-3. Add invite link generation UI to DashboardPage for the admin user
-4. Validate and build
+1. Write spec.md (this file)
+2. Select authorization and invite-links components
+3. Generate Motoko backend with all functional requirements
+4. Build React frontend with all views: Landing, Dashboard, Compose, Inbox, Send Tokens
+5. Deploy

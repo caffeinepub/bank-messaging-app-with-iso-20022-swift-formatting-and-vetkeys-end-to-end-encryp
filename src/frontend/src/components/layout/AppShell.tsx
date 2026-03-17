@@ -3,11 +3,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Link, useRouter } from "@tanstack/react-router";
 import {
   ChevronDown,
+  Coins,
   Inbox,
   LayoutDashboard,
   Lock,
@@ -27,6 +29,7 @@ const navLinks = [
   { to: "/contacts", label: "Contacts", icon: Users },
   { to: "/compose", label: "Compose", icon: PenSquare },
   { to: "/inbox", label: "Inbox", icon: Inbox },
+  { to: "/send-tokens", label: "Send Tokens", icon: Coins },
 ];
 
 export default function AppShell({ children }: { children: ReactNode }) {
@@ -44,24 +47,24 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
+      <header className="sticky top-0 z-50 border-b border-border/60 bg-background/95 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           {/* Logo */}
           <Link
             to="/"
-            className="flex items-center gap-2 group"
+            className="flex items-center gap-2.5 group"
             data-ocid="nav.link"
           >
-            <div className="w-7 h-7 rounded border border-primary/40 bg-primary/10 flex items-center justify-center">
+            <div className="w-7 h-7 rounded border border-primary/40 bg-primary/10 flex items-center justify-center group-hover:border-primary/70 transition-colors">
               <Lock className="w-3.5 h-3.5 text-primary" />
             </div>
-            <span className="font-mono text-sm font-bold tracking-tight text-foreground">
+            <span className="font-display font-bold text-sm tracking-widest text-foreground uppercase">
               OP_DUP
             </span>
           </Link>
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-0.5">
             {navLinks.map(({ to, label, icon: Icon }) => (
               <Link
                 key={to}
@@ -71,7 +74,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     ? "bg-primary/15 text-primary font-medium"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                 }`}
-                data-ocid={`nav.${label.toLowerCase()}.link`}
+                data-ocid={`nav.${label.toLowerCase().replace(" ", "_")}.link`}
               >
                 <Icon className="w-3.5 h-3.5" />
                 {label}
@@ -79,14 +82,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
             ))}
           </nav>
 
-          {/* User Menu */}
+          {/* User menu */}
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="hidden md:flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                  className="hidden md:flex items-center gap-2 text-muted-foreground hover:text-foreground h-8 px-2"
                   data-ocid="nav.dropdown_menu"
                 >
                   <span className="font-mono text-xs">
@@ -95,10 +98,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   <ChevronDown className="w-3.5 h-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem className="text-sm font-mono text-muted-foreground cursor-default">
-                  {shortPrincipal}
-                </DropdownMenuItem>
+              <DropdownMenuContent align="end" className="w-52">
+                <div className="px-2 py-1.5">
+                  <p className="text-xs font-mono text-muted-foreground truncate">
+                    {shortPrincipal}
+                  </p>
+                </div>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={clear}
                   className="text-destructive focus:text-destructive cursor-pointer"
@@ -110,7 +116,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Mobile menu toggle */}
+            {/* Mobile toggle */}
             <Button
               variant="ghost"
               size="icon"
@@ -127,7 +133,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        {/* Mobile Nav */}
+        {/* Mobile nav */}
         {mobileOpen && (
           <div className="md:hidden border-t border-border bg-card">
             <nav className="max-w-6xl mx-auto px-4 py-3 flex flex-col gap-1">
@@ -141,7 +147,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                       ? "bg-primary/15 text-primary font-medium"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                   }`}
-                  data-ocid={`nav.mobile.${label.toLowerCase()}.link`}
+                  data-ocid={`nav.mobile.${label.toLowerCase().replace(" ", "_")}.link`}
                 >
                   <Icon className="w-4 h-4" />
                   {label}
@@ -161,7 +167,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      {/* Main Content */}
+      {/* Main */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
         {children}
       </main>

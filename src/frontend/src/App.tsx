@@ -13,6 +13,7 @@ import ContactsPage from "./pages/ContactsPage";
 import DashboardPage from "./pages/DashboardPage";
 import InboxPage from "./pages/InboxPage";
 import MessageDetailPage from "./pages/MessageDetailPage";
+import SendTokensPage from "./pages/SendTokensPage";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -48,6 +49,12 @@ const inboxRoute = createRoute({
   component: InboxPage,
 });
 
+const sendTokensRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/send-tokens",
+  component: SendTokensPage,
+});
+
 const messageDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/message/$messageId",
@@ -59,6 +66,7 @@ const routeTree = rootRoute.addChildren([
   contactsRoute,
   composeRoute,
   inboxRoute,
+  sendTokensRoute,
   messageDetailRoute,
 ]);
 

@@ -8,6 +8,10 @@ import LandingPage from "../../pages/LandingPage";
 import InviteCodeScreen from "./InviteCodeScreen";
 import ProfileSetupModal from "./ProfileSetupModal";
 
+// This principal always bypasses invite checks and has admin access.
+const ADMIN_PRINCIPAL =
+  "lmmsf-dqn72-o5wi6-ab664-m7cwl-lejc3-nj6ys-ye6fs-jf3t4-prsqg-kae";
+
 function LoadingScreen() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
@@ -16,7 +20,7 @@ function LoadingScreen() {
           <div className="w-12 h-12 rounded-full border-2 border-primary/20" />
           <Loader2 className="w-12 h-12 text-primary animate-spin absolute inset-0" />
         </div>
-        <p className="text-muted-foreground text-sm font-mono">
+        <p className="text-muted-foreground text-sm font-mono tracking-wide">
           Initializing...
         </p>
       </div>
@@ -37,8 +41,9 @@ function ConfigErrorScreen() {
             Connection Error
           </h2>
         </div>
-        <p className="text-muted-foreground text-sm">
-          Unable to connect to the backend. Please try refreshing the page.
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          Unable to connect to the backend. Please try refreshing the page. If
+          the problem persists, the canister may be temporarily unavailable.
         </p>
         <Button
           variant="outline"
@@ -62,6 +67,15 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [actorFailed, setActorFailed] = useState(false);
 
   const isAuthenticated = !!identity;
+  const currentPrincipal = identity?.getPrincipal().toString();
+  const isAdminPrincipal = currentPrincipal === ADMIN_PRINCIPAL;
+
+  // Admin always bypasses invite checks
+  useEffect(() => {
+    if (isAdminPrincipal && !inviteVerified) {
+      setInviteVerified(true);
+    }
+  }, [isAdminPrincipal, inviteVerified]);
 
   // Only mark actor as failed after a genuine fetch attempt
   useEffect(() => {
@@ -72,7 +86,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     if (actor) setActorFailed(false);
   }, [actor, isFetching, isAuthenticated]);
 
-  // Show profile setup when logged in and profile is null and invite is verified
+  // Show profile setup when logged in, profile is null, and invite is verified
   useEffect(() => {
     if (
       isAuthenticated &&
@@ -99,7 +113,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   if (actorFailed && !actor) return <ConfigErrorScreen />;
 
-  // New user without a profile: show invite gate first
+  // New user without a profile: show invite gate first (admin auto-bypasses)
   if (
     !profileQuery.isLoading &&
     profileQuery.data === null &&
