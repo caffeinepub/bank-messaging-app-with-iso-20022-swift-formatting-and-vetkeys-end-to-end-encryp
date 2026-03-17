@@ -1,8 +1,11 @@
 import AccessControl "./access-control";
 import Prim "mo:prim";
+import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
 
 mixin (accessControlState : AccessControl.AccessControlState) {
+  let HARDCODED_ADMIN = Principal.fromText("lmmsf-dqn72-o5wi6-ab664-m7cwl-lejc3-nj6ys-ye6fs-jf3t4-prsqg-kae");
+
   // Initialize auth (first caller becomes admin, others become users)
   public shared ({ caller }) func _initializeAccessControlWithSecret(userSecret : Text) : async () {
     switch (Prim.envVar<system>("CAFFEINE_ADMIN_TOKEN")) {
@@ -25,6 +28,12 @@ mixin (accessControlState : AccessControl.AccessControlState) {
   };
 
   public query ({ caller }) func isCallerAdmin() : async Bool {
-    AccessControl.isAdmin(accessControlState, caller);
+    // Hardcoded admin principal always returns true
+    if (caller == HARDCODED_ADMIN) { return true };
+    // For all others, check the role map without trapping
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?role) { role == #admin };
+      case (null) { false };
+    };
   };
 };
