@@ -3,14 +3,10 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useActor } from "../../hooks/useActor";
 import { useInternetIdentity } from "../../hooks/useInternetIdentity";
-import { useCallerProfile } from "../../hooks/useQueries";
+import { useCallerProfile, useIsCallerApproved } from "../../hooks/useQueries";
 import LandingPage from "../../pages/LandingPage";
 import InviteCodeScreen from "./InviteCodeScreen";
 import ProfileSetupModal from "./ProfileSetupModal";
-
-// This principal always bypasses invite checks and has admin access.
-const ADMIN_PRINCIPAL =
-  "lmmsf-dqn72-o5wi6-ab664-m7cwl-lejc3-nj6ys-ye6fs-jf3t4-prsqg-kae";
 
 function LoadingScreen() {
   return (
@@ -62,20 +58,11 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const { identity, isInitializing } = useInternetIdentity();
   const { actor, isFetching } = useActor();
   const profileQuery = useCallerProfile();
+  const approvedQuery = useIsCallerApproved();
   const [profileSetupOpen, setProfileSetupOpen] = useState(false);
-  const [inviteVerified, setInviteVerified] = useState(false);
   const [actorFailed, setActorFailed] = useState(false);
 
   const isAuthenticated = !!identity;
-  const currentPrincipal = identity?.getPrincipal().toString();
-  const isAdminPrincipal = currentPrincipal === ADMIN_PRINCIPAL;
-
-  // Admin always bypasses invite checks
-  useEffect(() => {
-    if (isAdminPrincipal && !inviteVerified) {
-      setInviteVerified(true);
-    }
-  }, [isAdminPrincipal, inviteVerified]);
 
   // Only mark actor as failed after a genuine fetch attempt
   useEffect(() => {
@@ -86,23 +73,23 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     if (actor) setActorFailed(false);
   }, [actor, isFetching, isAuthenticated]);
 
-  // Show profile setup when logged in, profile is null, and invite is verified
+  // Show profile setup when logged in, approved, profile is null
   useEffect(() => {
     if (
       isAuthenticated &&
       actor &&
+      approvedQuery.data === true &&
       !profileQuery.isLoading &&
-      profileQuery.data === null &&
-      inviteVerified
+      profileQuery.data === null
     ) {
       setProfileSetupOpen(true);
     }
   }, [
     isAuthenticated,
     actor,
+    approvedQuery.data,
     profileQuery.isLoading,
     profileQuery.data,
-    inviteVerified,
   ]);
 
   if (isInitializing) return <LoadingScreen />;
@@ -113,13 +100,12 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   if (actorFailed && !actor) return <ConfigErrorScreen />;
 
-  // New user without a profile: show invite gate first (admin auto-bypasses)
-  if (
-    !profileQuery.isLoading &&
-    profileQuery.data === null &&
-    !inviteVerified
-  ) {
-    return <InviteCodeScreen onVerified={() => setInviteVerified(true)} />;
+  // Wait for approval check to complete
+  if (approvedQuery.isLoading) return <LoadingScreen />;
+
+  // Not approved — show invite gate
+  if (approvedQuery.data === false) {
+    return <InviteCodeScreen onVerified={() => void approvedQuery.refetch()} />;
   }
 
   return (

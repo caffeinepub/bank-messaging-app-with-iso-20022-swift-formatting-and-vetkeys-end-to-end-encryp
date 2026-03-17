@@ -20,6 +20,10 @@ export interface EncryptedMessage {
   'encryptedPayload' : Uint8Array,
   'encryptedSymmetricKey' : EncryptedKeyBytes,
 }
+export interface InviteCodeRecord {
+  'code' : string,
+  'used' : boolean,
+}
 export type MessageType = { 'iso20022' : null } |
   { 'swift' : null };
 export interface SyncStatus {
@@ -41,25 +45,18 @@ export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addTrustedContact' : ActorMethod<[Principal], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'generateInviteCode' : ActorMethod<[], string>,
   'getAllMessagesForCaller' : ActorMethod<[], Array<EncryptedMessage>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  /**
-   * / Get the public key of a mutually trusted contact.
-   * / Only works if both caller and the contact have added each other as trusted contacts.
-   * / This allows encrypting messages to trusted contacts without exposing full profile data.
-   */
   'getContactPublicKey' : ActorMethod<[Principal], [] | [Uint8Array]>,
+  'getInviteCodes' : ActorMethod<[], Array<InviteCodeRecord>>,
   'getMessageById' : ActorMethod<[bigint], EncryptedMessage>,
-  /**
-   * / Get the relationship status between the caller and another user.
-   * / This includes public key and trust relationship info.
-   * / Only reveals information about the relationship between caller and the specified user.
-   */
   'getRelationshipStatus' : ActorMethod<[Principal], SyncStatus>,
   'getTrustedContacts' : ActorMethod<[], Array<Principal>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'isCallerApproved' : ActorMethod<[], boolean>,
   'isTrustedContact' : ActorMethod<[Principal], boolean>,
   'removeTrustedContact' : ActorMethod<[Principal], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
@@ -67,6 +64,7 @@ export interface _SERVICE {
     [Principal, MessageType, Uint8Array, EncryptedKeyBytes],
     bigint
   >,
+  'submitInviteCode' : ActorMethod<[string], boolean>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

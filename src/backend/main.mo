@@ -3,14 +3,17 @@ import Runtime "mo:core/Runtime";
 import Map "mo:core/Map";
 import Set "mo:core/Set";
 import Array "mo:core/Array";
-import Blob "mo:core/Blob";
+import Text "mo:core/Text";
 import Time "mo:core/Time";
+import Int "mo:core/Int";
 import Principal "mo:core/Principal";
 
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
 actor {
+  // ── Types ──────────────────────────────────────────────────────────────────
+
   type EncryptedMessage = {
     id : Nat;
     from : Principal;
@@ -21,39 +24,15 @@ actor {
     timestamp : Time.Time;
   };
 
-  module EncryptedMessage {
-    public func compare(message1 : EncryptedMessage, message2 : EncryptedMessage) : Order.Order {
-      Nat.compare(message1.id, message2.id);
-    };
-  };
-
-  type MessageType = {
-    #iso20022;
-    #swift;
-  };
-
+  type MessageType = { #iso20022; #swift };
   type EncryptedKeyBytes = Blob;
-
-  let messages = Map.empty<Nat, EncryptedMessage>();
-  var nextMessageId = 0;
-
-  let trustedContacts = Map.empty<Principal, Set.Set<Principal>>();
 
   type UserProfile = {
     name : Text;
     publicKey : ?Blob;
   };
 
-  let userProfiles = Map.empty<Principal, UserProfile>();
-  let accessControlState = AccessControl.initState();
-  include MixinAuthorization(accessControlState);
-
-  public type ContactRequest = {
-    fromUser : Principal;
-    toUser : Principal;
-  };
-
-  public type SyncStatus = {
+  type SyncStatus = {
     callerHasPublicKey : Bool;
     otherHasPublicKey : Bool;
     callerTrustsOther : Bool;
@@ -61,170 +40,244 @@ actor {
     isMutuallyTrusted : Bool;
   };
 
-  // User Profile Management
-  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view profiles");
+  type InviteCodeRecord = {
+    code : Text;
+    used : Bool;
+  };
+
+  // ── Hardcoded admin ────────────────────────────────────────────────────────
+
+  let HARDCODED_ADMIN : Principal =
+    Principal.fromText("lmmsf-dqn72-o5wi6-ab664-m7cwl-lejc3-nj6ys-ye6fs-jf3t4-prsqg-kae");
+
+  // ── State ──────────────────────────────────────────────────────────────────
+
+  let messages = Map.empty<Nat, EncryptedMessage>();
+  var nextMessageId : Nat = 0;
+
+  let trustedContacts = Map.empty<Principal, Set.Set<Principal>>();
+  let userProfiles = Map.empty<Principal, UserProfile>();
+
+  let accessControlState = AccessControl.initState();
+  include MixinAuthorization(accessControlState);
+
+  // Invite system state (on-chain)
+  let inviteCodes = Map.empty<Text, Bool>(); // code -> isUsed
+  let approvedPrincipals = Map.empty<Principal, Bool>(); // principal -> true
+  var codeCounter : Nat = 0;
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  func isHardcodedAdmin(p : Principal) : Bool {
+    p == HARDCODED_ADMIN
+  };
+
+  func isApproved(p : Principal) : Bool {
+    if (isHardcodedAdmin(p)) return true;
+    switch (approvedPrincipals.get(p)) {
+      case (?_) true;
+      case null false;
     };
-    userProfiles.get(caller);
+  };
+
+  func requireApproved(caller : Principal) {
+    if (not isApproved(caller)) {
+      Runtime.trap("Access denied: invite required");
+    };
+  };
+
+  func requireAdmin(caller : Principal) {
+    if (not isHardcodedAdmin(caller)) {
+      Runtime.trap("Unauthorized: admin only");
+    };
+  };
+
+  let CHARS : [Char] = [
+    'A','B','C','D','E','F','G','H','J','K','L','M',
+    'N','P','Q','R','S','T','U','V','W','X','Y','Z',
+    '2','3','4','5','6','7','8','9'
+  ];
+
+  func makeInviteCode() : Text {
+    let t : Int = Time.now();
+    let tNat : Nat = if (t > 0) { Int.abs(t) } else { codeCounter + 1 };
+    var s : Nat = (codeCounter * 999983 + tNat % 999979) % 4294967296;
+    codeCounter += 1;
+
+    let pick = func() : Char {
+      s := (s * 1664525 + 1013904223) % 4294967296;
+      CHARS[s % 32]
+    };
+
+    let parts : [Char] = [
+      pick(), pick(), pick(), pick(), '-',
+      pick(), pick(), pick(), pick(), '-',
+      pick(), pick(), pick(), pick()
+    ];
+    Text.fromIter(parts.vals())
+  };
+
+  func areMutuallyTrusted(a : Principal, b : Principal) : Bool {
+    let aTrustsB = switch (trustedContacts.get(a)) {
+      case null false;
+      case (?s) s.contains(b);
+    };
+    let bTrustsA = switch (trustedContacts.get(b)) {
+      case null false;
+      case (?s) s.contains(a);
+    };
+    aTrustsB and bTrustsA
+  };
+
+  // ── Invite System ──────────────────────────────────────────────────────────
+
+  /// Returns true if the caller is the hardcoded admin or has used a valid invite code.
+  public query ({ caller }) func isCallerApproved() : async Bool {
+    isApproved(caller)
+  };
+
+  /// Admin only: generate a new invite code and store it on-chain.
+  public shared ({ caller }) func generateInviteCode() : async Text {
+    requireAdmin(caller);
+    let code = makeInviteCode();
+    inviteCodes.add(code, false);
+    code
+  };
+
+  /// Anyone: submit an invite code. If valid and unused, marks caller as approved.
+  public shared ({ caller }) func submitInviteCode(code : Text) : async Bool {
+    let trimmed = code;
+    switch (inviteCodes.get(trimmed)) {
+      case null {
+        Runtime.trap("Invalid invite code");
+      };
+      case (?used) {
+        if (used) {
+          Runtime.trap("Invite code already used");
+        };
+        inviteCodes.add(trimmed, true);
+        approvedPrincipals.add(caller, true);
+        true
+      };
+    };
+  };
+
+  /// Admin only: list all invite codes with their used status.
+  public query ({ caller }) func getInviteCodes() : async [InviteCodeRecord] {
+    requireAdmin(caller);
+    inviteCodes.entries().toArray().map(
+      func((code, used)) : InviteCodeRecord { { code; used } }
+    )
+  };
+
+  // ── User Profiles ──────────────────────────────────────────────────────────
+
+  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
+    userProfiles.get(caller)
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can view user profiles");
-    };
-    userProfiles.get(user);
-  };
-
-  /// Get the public key of a mutually trusted contact.
-  /// Only works if both caller and the contact have added each other as trusted contacts.
-  /// This allows encrypting messages to trusted contacts without exposing full profile data.
-  public query ({ caller }) func getContactPublicKey(contact : Principal) : async ?Blob {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can fetch contact public keys");
-    };
-
-    // Both parties must trust each other
-    let callerTrustsContact = switch (trustedContacts.get(caller)) {
-      case (null) { false };
-      case (?contacts) { contacts.contains(contact) };
-    };
-    let contactTrustsCaller = switch (trustedContacts.get(contact)) {
-      case (null) { false };
-      case (?contacts) { contacts.contains(caller) };
-    };
-
-    if (not (callerTrustsContact and contactTrustsCaller)) {
-      Runtime.trap("Unauthorized: Can only fetch public key of mutually trusted contacts");
-    };
-
-    switch (userProfiles.get(contact)) {
-      case (null) { null };
-      case (?profile) { profile.publicKey };
-    };
+    requireAdmin(caller);
+    userProfiles.get(user)
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
-    };
+    requireApproved(caller);
     userProfiles.add(caller, profile);
   };
 
-  // Create a trusted contact
+  /// Returns the public key of a mutually trusted contact.
+  public query ({ caller }) func getContactPublicKey(contact : Principal) : async ?Blob {
+    requireApproved(caller);
+    if (not areMutuallyTrusted(caller, contact)) {
+      Runtime.trap("Can only fetch public key of mutually trusted contacts");
+    };
+    switch (userProfiles.get(contact)) {
+      case null null;
+      case (?profile) profile.publicKey;
+    };
+  };
+
+  // ── Trust Contacts ─────────────────────────────────────────────────────────
+
   public shared ({ caller }) func addTrustedContact(user : Principal) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can add trusted contacts");
-    };
-
-    if (caller == user) {
-      Runtime.trap("Cannot add yourself as a trusted contact");
-    };
-
-    let callerContacts = switch (trustedContacts.get(caller)) {
-      case (null) {
-        let newSet = Set.singleton(user);
-        trustedContacts.add(caller, newSet);
-        return;
-      };
-      case (?contacts) {
-        contacts.add(user);
-      };
-    };
-  };
-
-  // Check if user is a trusted contact
-  public query ({ caller }) func isTrustedContact(user : Principal) : async Bool {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can check trusted contacts");
-    };
-
+    requireApproved(caller);
+    if (caller == user) Runtime.trap("Cannot add yourself as a trusted contact");
     switch (trustedContacts.get(caller)) {
-      case (null) { false };
-      case (?contacts) { contacts.contains(user) };
+      case null {
+        trustedContacts.add(caller, Set.singleton(user));
+      };
+      case (?s) {
+        s.add(user);
+      };
     };
   };
 
-  /// Get the relationship status between the caller and another user.
-  /// This includes public key and trust relationship info.
-  /// Only reveals information about the relationship between caller and the specified user.
-  public query ({ caller }) func getRelationshipStatus(other : Principal) : async SyncStatus {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can query relationship status");
+  public shared ({ caller }) func removeTrustedContact(user : Principal) : async () {
+    requireApproved(caller);
+    switch (trustedContacts.get(caller)) {
+      case null {};
+      case (?s) { s.remove(user) };
     };
+  };
 
-    // Check public key presence
+  public query ({ caller }) func getTrustedContacts() : async [Principal] {
+    switch (trustedContacts.get(caller)) {
+      case null [];
+      case (?s) s.toArray();
+    };
+  };
+
+  public query ({ caller }) func isTrustedContact(user : Principal) : async Bool {
+    switch (trustedContacts.get(caller)) {
+      case null false;
+      case (?s) s.contains(user);
+    };
+  };
+
+  public query ({ caller }) func getRelationshipStatus(other : Principal) : async SyncStatus {
     let callerProfile = userProfiles.get(caller);
     let otherProfile = userProfiles.get(other);
 
     let callerHasPublicKey = switch (callerProfile) {
-      case (?profile) { profile.publicKey != null };
-      case (null) { false };
+      case (?p) p.publicKey != null;
+      case null false;
     };
-
     let otherHasPublicKey = switch (otherProfile) {
-      case (?profile) { profile.publicKey != null };
-      case (null) { false };
+      case (?p) p.publicKey != null;
+      case null false;
     };
-
-    // Check trust relationships
     let callerTrustsOther = switch (trustedContacts.get(caller)) {
-      case (null) { false };
-      case (?contacts) { contacts.contains(other) };
+      case null false;
+      case (?s) s.contains(other);
     };
-
     let otherTrustsCaller = switch (trustedContacts.get(other)) {
-      case (null) { false };
-      case (?contacts) { contacts.contains(caller) };
+      case null false;
+      case (?s) s.contains(caller);
     };
-
-    let isMutuallyTrusted = callerTrustsOther and otherTrustsCaller;
-
     {
       callerHasPublicKey;
       otherHasPublicKey;
       callerTrustsOther;
       otherTrustsCaller;
-      isMutuallyTrusted;
-    };
+      isMutuallyTrusted = callerTrustsOther and otherTrustsCaller;
+    }
   };
 
-  // Helper function to check mutual trust
-  func areMutuallyTrusted(user1 : Principal, user2 : Principal) : Bool {
-    let user1TrustsUser2 = switch (trustedContacts.get(user1)) {
-      case (null) { false };
-      case (?contacts) { contacts.contains(user2) };
-    };
+  // ── Messaging ──────────────────────────────────────────────────────────────
 
-    let user2TrustsUser1 = switch (trustedContacts.get(user2)) {
-      case (null) { false };
-      case (?contacts) { contacts.contains(user1) };
-    };
-
-    user1TrustsUser2 and user2TrustsUser1;
-  };
-
-  // Send encrypted message
   public shared ({ caller }) func sendMessage(
     to : Principal,
     messageType : MessageType,
     encryptedPayload : Blob,
     encryptedSymmetricKey : EncryptedKeyBytes,
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can send messages");
-    };
-
-    if (caller == to) {
-      Runtime.trap("Cannot send message to yourself");
-    };
-
-    // Check mutual trust: both sender and recipient must trust each other
+    requireApproved(caller);
+    if (caller == to) Runtime.trap("Cannot send message to yourself");
     if (not areMutuallyTrusted(caller, to)) {
-      Runtime.trap("Unauthorized: Both users must have each other as trusted contacts");
+      Runtime.trap("Both users must have each other as trusted contacts");
     };
-
-    let message : EncryptedMessage = {
+    let msg : EncryptedMessage = {
       id = nextMessageId;
       from = caller;
       to;
@@ -233,67 +286,25 @@ actor {
       encryptedSymmetricKey;
       timestamp = Time.now();
     };
-
-    messages.add(nextMessageId, message);
+    messages.add(nextMessageId, msg);
     nextMessageId += 1;
-    message.id;
+    msg.id
   };
 
-  // Get all messages (received and sent) for the caller
   public query ({ caller }) func getAllMessagesForCaller() : async [EncryptedMessage] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can retrieve messages");
-    };
-
     messages.values().toArray().filter(
-      func(m) {
-        m.from == caller or m.to == caller;
-      }
-    );
+      func(m) { m.from == caller or m.to == caller }
+    )
   };
 
-  // Fetch a single message by id for authorized caller.
   public query ({ caller }) func getMessageById(messageId : Nat) : async EncryptedMessage {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can retrieve messages");
+    let msg = switch (messages.get(messageId)) {
+      case null Runtime.trap("Message not found");
+      case (?m) m;
     };
-
-    let message = switch (messages.get(messageId)) {
-      case (null) { Runtime.trap("Message not found") };
-      case (?m) { m };
+    if (caller != msg.from and caller != msg.to) {
+      Runtime.trap("Not authorized to fetch this message");
     };
-
-    if (caller != message.from and caller != message.to) {
-      Runtime.trap("Access denied: Not authorized to fetch this message");
-    };
-
-    message;
-  };
-
-  // Get all trusted contacts for caller
-  public query ({ caller }) func getTrustedContacts() : async [Principal] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view trusted contacts");
-    };
-
-    switch (trustedContacts.get(caller)) {
-      case (null) { [] };
-      case (?contacts) { contacts.toArray() };
-    };
-  };
-
-  // Remove a trusted contact
-  public shared ({ caller }) func removeTrustedContact(user : Principal) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can remove trusted contacts");
-    };
-
-    switch (trustedContacts.get(caller)) {
-      case (null) { /* No contacts to remove */ };
-      case (?contacts) {
-        contacts.remove(user);
-      };
-    };
+    msg
   };
 };
-

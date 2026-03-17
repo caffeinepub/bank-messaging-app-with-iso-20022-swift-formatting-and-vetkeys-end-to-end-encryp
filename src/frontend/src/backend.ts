@@ -100,6 +100,10 @@ export interface EncryptedMessage {
     encryptedPayload: Uint8Array;
     encryptedSymmetricKey: EncryptedKeyBytes;
 }
+export interface InviteCodeRecord {
+    code: string;
+    used: boolean;
+}
 export interface SyncStatus {
     otherHasPublicKey: boolean;
     callerHasPublicKey: boolean;
@@ -124,29 +128,23 @@ export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     addTrustedContact(user: Principal): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    generateInviteCode(): Promise<string>;
     getAllMessagesForCaller(): Promise<Array<EncryptedMessage>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
-    /**
-     * / Get the public key of a mutually trusted contact.
-     * / Only works if both caller and the contact have added each other as trusted contacts.
-     * / This allows encrypting messages to trusted contacts without exposing full profile data.
-     */
     getContactPublicKey(contact: Principal): Promise<Uint8Array | null>;
+    getInviteCodes(): Promise<Array<InviteCodeRecord>>;
     getMessageById(messageId: bigint): Promise<EncryptedMessage>;
-    /**
-     * / Get the relationship status between the caller and another user.
-     * / This includes public key and trust relationship info.
-     * / Only reveals information about the relationship between caller and the specified user.
-     */
     getRelationshipStatus(other: Principal): Promise<SyncStatus>;
     getTrustedContacts(): Promise<Array<Principal>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
+    isCallerApproved(): Promise<boolean>;
     isTrustedContact(user: Principal): Promise<boolean>;
     removeTrustedContact(user: Principal): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     sendMessage(to: Principal, messageType: MessageType, encryptedPayload: Uint8Array, encryptedSymmetricKey: EncryptedKeyBytes): Promise<bigint>;
+    submitInviteCode(code: string): Promise<boolean>;
 }
 import type { EncryptedKeyBytes as _EncryptedKeyBytes, EncryptedMessage as _EncryptedMessage, MessageType as _MessageType, Time as _Time, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -190,6 +188,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+            return result;
+        }
+    }
+    async generateInviteCode(): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.generateInviteCode();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.generateInviteCode();
             return result;
         }
     }
@@ -247,6 +259,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getContactPublicKey(arg0);
             return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getInviteCodes(): Promise<Array<InviteCodeRecord>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getInviteCodes();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getInviteCodes();
+            return result;
         }
     }
     async getMessageById(arg0: bigint): Promise<EncryptedMessage> {
@@ -319,6 +345,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async isCallerApproved(): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.isCallerApproved();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.isCallerApproved();
+            return result;
+        }
+    }
     async isTrustedContact(arg0: Principal): Promise<boolean> {
         if (this.processError) {
             try {
@@ -372,6 +412,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.sendMessage(arg0, to_candid_MessageType_n16(this._uploadFile, this._downloadFile, arg1), arg2, arg3);
+            return result;
+        }
+    }
+    async submitInviteCode(arg0: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.submitInviteCode(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.submitInviteCode(arg0);
             return result;
         }
     }

@@ -79,58 +79,7 @@ export function useContactProfile(contact: Principal | null) {
   });
 }
 
-// ---- Invite Links ----
-
-const INVITE_CODES_KEY = "opdup_invite_codes";
-const USED_CODES_KEY = "opdup_used_invite_codes";
-
-interface InviteCode {
-  code: string;
-  used: boolean;
-  createdAt: string;
-}
-
-function getStoredInviteCodes(): InviteCode[] {
-  try {
-    const raw = localStorage.getItem(INVITE_CODES_KEY);
-    return raw ? (JSON.parse(raw) as InviteCode[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function getUsedCodes(): Set<string> {
-  try {
-    const raw = localStorage.getItem(USED_CODES_KEY);
-    const arr = raw ? (JSON.parse(raw) as string[]) : [];
-    return new Set(arr);
-  } catch {
-    return new Set();
-  }
-}
-
-function markCodeUsed(code: string) {
-  const used = getUsedCodes();
-  used.add(code);
-  localStorage.setItem(USED_CODES_KEY, JSON.stringify([...used]));
-
-  // Also mark in admin codes if present
-  const codes = getStoredInviteCodes();
-  const updated = codes.map((c) =>
-    c.code === code ? { ...c, used: true } : c,
-  );
-  localStorage.setItem(INVITE_CODES_KEY, JSON.stringify(updated));
-}
-
-function generateRandomCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "";
-  for (let i = 0; i < 12; i++) {
-    if (i > 0 && i % 4 === 0) code += "-";
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
-}
+// ---- Invite Links (backend-enforced) ----
 
 export function useIsCurrentUserAdmin() {
   const { actor, isFetching } = useActor();
@@ -144,32 +93,38 @@ export function useIsCurrentUserAdmin() {
   });
 }
 
+export function useIsCallerApproved() {
+  const { actor, isFetching } = useActor();
+  return useQuery<boolean>({
+    queryKey: ["isCallerApproved"],
+    queryFn: async () => {
+      if (!actor) return false;
+      return actor.isCallerApproved();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
 export function useGetInviteCodes() {
-  return useQuery({
+  const { actor, isFetching } = useActor();
+  return useQuery<Array<{ code: string; used: boolean }>>({
     queryKey: ["inviteCodes"],
     queryFn: async () => {
-      return getStoredInviteCodes();
+      if (!actor) return [];
+      return actor.getInviteCodes();
     },
+    enabled: !!actor && !isFetching,
     staleTime: 0,
   });
 }
 
 export function useGenerateInviteCode() {
+  const { actor } = useActor();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const code = generateRandomCode();
-      const codes = getStoredInviteCodes();
-      const newEntry: InviteCode = {
-        code,
-        used: false,
-        createdAt: new Date().toISOString(),
-      };
-      localStorage.setItem(
-        INVITE_CODES_KEY,
-        JSON.stringify([...codes, newEntry]),
-      );
-      return code;
+      if (!actor) throw new Error("Not connected");
+      return actor.generateInviteCode();
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["inviteCodes"] });
@@ -178,30 +133,18 @@ export function useGenerateInviteCode() {
 }
 
 export function useSubmitRSVP() {
+  const { actor } = useActor();
   return useMutation({
     mutationFn: async (params: {
       name: string;
       attending: boolean;
       inviteCode: string;
     }) => {
-      const code = params.inviteCode.trim().toUpperCase();
+      if (!actor) throw new Error("Not connected");
+      const code = params.inviteCode.trim();
       if (!code) throw new Error("Invalid or already used invite code");
-
-      const usedCodes = getUsedCodes();
-      if (usedCodes.has(code)) {
-        throw new Error("Invalid or already used invite code");
-      }
-
-      // Check admin-generated codes if they exist in localStorage
-      const adminCodes = getStoredInviteCodes();
-      if (adminCodes.length > 0) {
-        const match = adminCodes.find(
-          (c) => c.code.toUpperCase() === code && !c.used,
-        );
-        if (!match) throw new Error("Invalid or already used invite code");
-      }
-      // If no admin codes are stored (cross-device scenario), accept any non-empty non-used code
-      markCodeUsed(code);
+      const success = await actor.submitInviteCode(code);
+      if (!success) throw new Error("Invalid or already used invite code");
       return { success: true };
     },
   });

@@ -39,11 +39,16 @@ export const SyncStatus = IDL.Record({
   'callerTrustsOther' : IDL.Bool,
   'otherTrustsCaller' : IDL.Bool,
 });
+export const InviteCodeRecord = IDL.Record({
+  'code' : IDL.Text,
+  'used' : IDL.Bool,
+});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addTrustedContact' : IDL.Func([IDL.Principal], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'generateInviteCode' : IDL.Func([], [IDL.Text], []),
   'getAllMessagesForCaller' : IDL.Func(
       [],
       [IDL.Vec(EncryptedMessage)],
@@ -56,6 +61,7 @@ export const idlService = IDL.Service({
       [IDL.Opt(IDL.Vec(IDL.Nat8))],
       ['query'],
     ),
+  'getInviteCodes' : IDL.Func([], [IDL.Vec(InviteCodeRecord)], ['query']),
   'getMessageById' : IDL.Func([IDL.Nat], [EncryptedMessage], ['query']),
   'getRelationshipStatus' : IDL.Func([IDL.Principal], [SyncStatus], ['query']),
   'getTrustedContacts' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
@@ -65,6 +71,7 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'isCallerApproved' : IDL.Func([], [IDL.Bool], ['query']),
   'isTrustedContact' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
   'removeTrustedContact' : IDL.Func([IDL.Principal], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
@@ -73,6 +80,7 @@ export const idlService = IDL.Service({
       [IDL.Nat],
       [],
     ),
+  'submitInviteCode' : IDL.Func([IDL.Text], [IDL.Bool], []),
 });
 
 export const idlInitArgs = [];
@@ -109,11 +117,16 @@ export const idlFactory = ({ IDL }) => {
     'callerTrustsOther' : IDL.Bool,
     'otherTrustsCaller' : IDL.Bool,
   });
+  const InviteCodeRecord = IDL.Record({
+    'code' : IDL.Text,
+    'used' : IDL.Bool,
+  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addTrustedContact' : IDL.Func([IDL.Principal], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'generateInviteCode' : IDL.Func([], [IDL.Text], []),
     'getAllMessagesForCaller' : IDL.Func(
         [],
         [IDL.Vec(EncryptedMessage)],
@@ -126,6 +139,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(IDL.Vec(IDL.Nat8))],
         ['query'],
       ),
+    'getInviteCodes' : IDL.Func([], [IDL.Vec(InviteCodeRecord)], ['query']),
     'getMessageById' : IDL.Func([IDL.Nat], [EncryptedMessage], ['query']),
     'getRelationshipStatus' : IDL.Func(
         [IDL.Principal],
@@ -139,6 +153,7 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'isCallerApproved' : IDL.Func([], [IDL.Bool], ['query']),
     'isTrustedContact' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
     'removeTrustedContact' : IDL.Func([IDL.Principal], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
@@ -147,6 +162,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Nat],
         [],
       ),
+    'submitInviteCode' : IDL.Func([IDL.Text], [IDL.Bool], []),
   });
 };
 
